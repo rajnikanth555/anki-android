@@ -21,10 +21,7 @@ package com.ichi2.async;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.PowerManager;
 import android.util.Pair;
 
@@ -49,6 +46,7 @@ import com.ichi2.utils.JSONObject;
 import java.io.IOException;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import okhttp3.Response;
 import timber.log.Timber;
 
@@ -224,18 +222,16 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
         String username = (String) data.data[0];
         String password = (String) data.data[1];
         HostNum hostNum = (HostNum) data.data[2];
-        RemoteServer server = new RemoteServer(this, null, hostNum);
+        HttpSyncer server = new RemoteServer(this, null, hostNum);
         Response ret;
         try {
             ret = server.hostKey(username, password);
         } catch (UnknownHttpResponseException e) {
-            Timber.w(e);
             data.success = false;
             data.resultType = ERROR;
             data.result = new Object[]{e.getResponseCode(), e.getMessage() };
             return data;
         } catch (Exception e2) {
-            Timber.w(e2);
             // Ask user to report all bugs which aren't timeout errors
             if (!timeoutOccurred(e2)) {
                 AnkiDroidApp.sendExceptionReport(e2, "doInBackgroundLogin");
@@ -256,7 +252,6 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
                     hostkey = response.getString("key");
                     valid = (hostkey != null) && (hostkey.length() > 0);
                 } catch (JSONException e) {
-                    Timber.w(e);
                     valid = false;
                 } catch (IllegalStateException | IOException | NullPointerException e) {
                     throw new RuntimeException(e);
@@ -310,19 +305,6 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
         }
     }
 
-
-    /**
-     * Add generic error value to the payload
-     * @param data Some payload that should be transformed
-     * @return the original payload
-     */
-    private static Payload returnGenericError(Payload data) {
-        data.success = false;
-        data.resultType = GENERIC_ERROR;
-        data.result = new Object[0];
-        return data;
-    }
-
     /**
      * In the payload, success means that the sync did occur correctly and that a change did occur.
      * So success can be false without error, if no change occurred at all.*/
@@ -348,13 +330,15 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
             if (FULL_DOWNLOAD == conflictResolution) {
                 colCorruptFullSync = true;
             } else {
-                return returnGenericError(data);
+                data.success = false;
+                data.resultType = GENERIC_ERROR;
+                return data;
             }
         }
         try {
             CollectionHelper.getInstance().lockCollection();
-            RemoteServer remoteServer = new RemoteServer(this, hkey, hostNum);
-            Syncer client = new Syncer(col, remoteServer, hostNum);
+            HttpSyncer server = new RemoteServer(this, hkey, hostNum);
+            Syncer client = new Syncer(col, server, hostNum);
 
             // run sync and check state
             boolean noChanges = false;
@@ -364,7 +348,9 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
                 Pair<ConnectionResultType, Object> ret = client.sync(this);
                 data.message = client.getSyncMsg();
                 if (ret == null) {
-                    return returnGenericError(data);
+                    data.success = false;
+                    data.resultType = GENERIC_ERROR;
+                    return data;
                 }
                 if (NO_CHANGES != ret.first && SUCCESS != ret.first) {
                     data.success = false;
@@ -387,15 +373,18 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
                 try {
                     // Disable sync cancellation for full-sync
                     sIsCancellable = false;
-                    FullSyncer fullSyncServer = new FullSyncer(col, hkey, this, hostNum);
+                    server = new FullSyncer(col, hkey, this, hostNum);
+                    Pair<ConnectionResultType, Object[]> ret;
                     switch (conflictResolution) {
-                    case FULL_UPLOAD: {
+                    case FULL_UPLOAD:
                         Timber.i("Sync - fullsync - upload collection");
                         publishProgress(R.string.sync_preparing_full_sync_message);
-                        Pair<ConnectionResultType, Object[]> ret = fullSyncServer.upload();
+                        ret = server.upload();
                         col.reopen();
                         if (ret == null) {
-                            return returnGenericError(data);
+                            data.success = false;
+                            data.resultType = GENERIC_ERROR;
+                            return data;
                         }
                         if (ret.first == ARBITRARY_STRING && !ret.second[0].equals(HttpSyncer.ANKIWEB_STATUS_OK)) {
                             data.success = false;
@@ -404,45 +393,45 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
                             return data;
                         }
                         break;
-                    }
-                    case FULL_DOWNLOAD: {
+                    case FULL_DOWNLOAD:
                         Timber.i("Sync - fullsync - download collection");
                         publishProgress(R.string.sync_downloading_message);
-                        ConnectionResultType ret = fullSyncServer.download();
+                        ret = server.download();
                         if (ret == null) {
                             Timber.w("Sync - fullsync - unknown error");
-                            return returnGenericError(data);
+                            data.success = false;
+                            data.resultType = GENERIC_ERROR;
+                            return data;
                         }
-                        if (SUCCESS == ret) {
+                        if (SUCCESS == ret.first) {
                             data.success = true;
                             col.reopen();
                         }
-                        if (SUCCESS != ret) {
+                        if (SUCCESS != ret.first) {
                             Timber.w("Sync - fullsync - download failed");
                             data.success = false;
-                            data.resultType = ret;
+                            data.resultType = ret.first;
+                            data.result = ret.second;
                             if (!colCorruptFullSync) {
                                 col.reopen();
                             }
                             return data;
                         }
                         break;
-                    }
                     default:
                     }
                 } catch (OutOfMemoryError e) {
-                    Timber.w(e);
                     AnkiDroidApp.sendExceptionReport(e, "doInBackgroundSync-fullSync");
                     data.success = false;
                     data.resultType = OUT_OF_MEMORY_ERROR;
-                    data.result = new Object[0];
                     return data;
                 } catch (RuntimeException e) {
-                    Timber.w(e);
                     if (timeoutOccurred(e)) {
                         data.resultType = CONNECTION_ERROR;
                     } else if (USER_ABORTED_SYNC.toString().equals(e.getMessage())) {
                         data.resultType = USER_ABORTED_SYNC;
+                    } else if (CUSTOM_SYNC_SERVER_URL.toString().equals(e.getMessage())) {
+                        data.resultType = CUSTOM_SYNC_SERVER_URL;
                     } else {
                         AnkiDroidApp.sendExceptionReport(e, "doInBackgroundSync-fullSync");
                         data.resultType = IO_EXCEPTION;
@@ -462,16 +451,16 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
             boolean noMediaChanges = false;
             String mediaError = null;
             if (media) {
-                RemoteMediaServer mediaServer = new RemoteMediaServer(col, hkey, this, hostNum);
-                MediaSyncer mediaClient = new MediaSyncer(col, mediaServer, this);
-                Pair<ConnectionResultType, String> ret;
+                server = new RemoteMediaServer(col, hkey, this, hostNum);
+                MediaSyncer mediaClient = new MediaSyncer(col, (RemoteMediaServer) server, this);
+                Pair<ConnectionResultType, Object> ret;
                 try {
                     Timber.i("Sync - Performing media sync");
                     ret = mediaClient.sync();
                     if (ret == null || ret.first == null) {
                         mediaError = AnkiDroidApp.getAppResources().getString(R.string.sync_media_error);
                     } else {
-                        if (CORRUPT == ret.first) {
+                        if ("corruptMediaDB".equals(ret)) {
                             mediaError = AnkiDroidApp.getAppResources().getString(R.string.sync_media_db_error);
                             noMediaChanges = true;
                         }
@@ -486,7 +475,6 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
                         }
                     }
                 } catch (RuntimeException e) {
-                    Timber.w(e);
                     if (timeoutOccurred(e)) {
                         data.resultType = CONNECTION_ERROR;
                         data.result = new Object[]{e};
@@ -501,7 +489,6 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
                 // This means that there is no change at all, neither media nor collection. Not that there was an error.
                 data.success = false;
                 data.resultType = NO_CHANGES;
-                data.result = new Object[0];
             } else {
                 data.success = true;
                 data.data = new Object[] { conflictResolution, col, mediaError };
@@ -513,6 +500,7 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
             data.resultType = MEDIA_SYNC_SERVER_ERROR;
             data.result = new Object[]{e};
             AnkiDroidApp.sendExceptionReport(e, "doInBackgroundSync");
+            closeCol(col);
             return data;
         } catch (UnknownHttpResponseException e) {
             Timber.e(e, "doInBackgroundSync -- unknown response code error");
@@ -521,6 +509,7 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
             String msg = e.getLocalizedMessage();
             data.resultType = ERROR;
             data.result = new Object[] {code , msg};
+            closeCol(col);
             return data;
         } catch (Exception e) {
             // Global error catcher.
@@ -533,22 +522,28 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
             } else if (USER_ABORTED_SYNC.toString().equals(e.getMessage())) {
                 data.resultType = USER_ABORTED_SYNC;
                 data.result = new Object[]{e};
+            } else if (CUSTOM_SYNC_SERVER_URL.toString().equals(e.getMessage())) {
+                data.resultType = CUSTOM_SYNC_SERVER_URL;
+                data.result = new Object[]{e};
             } else {
                 AnkiDroidApp.sendExceptionReport(e, "doInBackgroundSync");
                 data.resultType = ARBITRARY_STRING;
                 data.result = new Object[] {e.getLocalizedMessage(), e};
             }
+            closeCol(col);
             return data;
         } finally {
             Timber.i("Sync Finished - Closing Collection");
             // don't bump mod time unless we explicitly save
-            if (col != null) {
-                col.close(false);
-            }
             CollectionHelper.getInstance().unlockCollection();
         }
     }
 
+    private void closeCol(Collection col) {
+        if (col != null) {
+            col.close(false);
+        }
+    }
 
     public void publishProgress(int id) {
         super.publishProgress(id);
@@ -564,34 +559,18 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
         super.publishProgress(id, up, down);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("deprecation") // TODO Tracked in https://github.com/ankidroid/Anki-Android/issues/7013
     public static boolean isOnline() {
         if (sAllowSyncOnNoConnection) {
             return true;
         }
         ConnectivityManager cm = (ConnectivityManager) AnkiDroidApp.getInstance().getApplicationContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null) {
-            return false;
+        if (cm != null) {
+            android.net.NetworkInfo netInfo = cm.getActiveNetworkInfo();
+            return (netInfo != null) && netInfo.isConnected();
         }
-        /* NetworkInfo is deprecated in API 29 so we have to check separately for higher API Levels */
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            Network network = cm.getActiveNetwork();
-            if (network == null) {
-                return false;
-            }
-            NetworkCapabilities networkCapabilities = cm.getNetworkCapabilities(network);
-            if (networkCapabilities == null) {
-                return false;
-            }
-            boolean isInternetSuspended = !networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED);
-            return networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                    && !isInternetSuspended;
-        } else {
-            android.net.NetworkInfo networkInfo = cm.getActiveNetworkInfo();
-            return networkInfo != null && networkInfo.isConnected();
-        }
+        return false;
     }
 
 
@@ -614,7 +593,7 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
 
     public static class Payload {
         private int taskType;
-        @NonNull public Object[] data;
+        public Object[] data;
         public ConnectionResultType resultType;
         public Object[] result;
         public boolean success;
@@ -624,7 +603,7 @@ public class Connection extends BaseAsyncTask<Connection.Payload, Object, Connec
         public Collection col;
 
 
-        public Payload(@NonNull Object[] data) {
+        public Payload(Object[] data) {
             this.data = data;
             success = true;
         }
