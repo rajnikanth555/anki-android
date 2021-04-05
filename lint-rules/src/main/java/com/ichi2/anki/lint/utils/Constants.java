@@ -43,4 +43,19 @@ public class Constants {
      */
     public static final Severity ANKI_CROWDIN_SEVERITY = Severity.FATAL;
 
+    /**
+     * A special {@link Category} which groups the Lint issues related to the usage of the new Style class as a
+     * sub category for {@link Category#COMPLIANCE}.
+     */
+    public static final Category ANKI_STYLE_CATEGORY = create(Category.COMPLIANCE, "Style", 10);
+
+    /**
+     * The priority for the Lint issues used by all rules related to the restrictions introduced by Style.
+     */
+    public static final int ANKI_STYLE_PRIORITY = 10;
+
+    /**
+     * The severity for the Lint issues used by all rules related to the restrictions introduced by Style.
+     */
+    public static final Severity ANKI_STYLE_SEVERITY = Severity.FATAL;
 }
