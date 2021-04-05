@@ -1,5 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<!--
+<?xml version='1.0' encoding='UTF-8'?><!--
 ~ Copyright (c) 2011 Norbert Nagold <norbert.nagold@gmail.com>
 ~
 ~ This program is free software; you can redistribute it and/or modify it under
@@ -25,6 +24,47 @@
     <!-- Text to be shown in preference summary -->
     <string name="preference_summary_literal">XXX</string>
     <!-- Used in deck preferences -->
+    <string name="link_anki">http://ankisrs.net</string>
+    <string name="link_anki_manual">https://docs.ankiweb.net/#/</string>
+    <string name="link_anki_forum">https://forums.ankiweb.net/</string>
+    <string name="link_forum">http://groups.google.com/group/anki-android</string>
+    <string name="link_wiki">https://github.com/ankidroid/Anki-Android/wiki</string>
+    <string name="link_issue_tracker">https://github.com/ankidroid/Anki-Android/issues</string>
+
+    <string name="licence_wiki">http://www.gnu.org/licenses/gpl.html</string>
+    <string name="link_source">https://github.com/ankidroid/Anki-Android</string>
+    <string name="link_donation">http://ankisrs.net/support</string>
+    <string name="link_market">market://details?id=com.ichi2.anki</string>
+    <string name="link_market_kindle">http://www.amazon.com/gp/mas/dl/android?p=com.ichi2.anki</string>
+    <string name="link_translation">http://crowdin.net/project/ankidroid</string>
+    <string name="link_wikipedia_open_source">http://en.wikipedia.org/wiki/Open_source_software</string>
+    <string name="link_contribution">https://github.com/ankidroid/Anki-Android/wiki/Contributing</string>
+    <string name="link_help">https://docs.ankidroid.org/help.html</string>
+    <string name="link_manual">https://docs.ankidroid.org/manual.html</string>
+    <string name="link_help_ja">https://docs.ankidroid.org/help-ja.html</string>
+    <string name="link_manual_ja">https://docs.ankidroid.org/manual-ja.html</string>
+    <string name="link_help_zh">https://docs.ankidroid.org/help-zh.html</string>
+    <string name="link_manual_zh">https://docs.ankidroid.org/manual-zh.html</string>
+    <string name="link_help_ar">https://docs.ankidroid.org/help-ar.html</string>
+    <string name="link_manual_ar">https://docs.ankidroid.org/manual-ar.html</string>
+    <string name="link_manual_note_format_toolbar">https://docs.ankidroid.org/manual.html#noteFormatToolbar</string>
+    <string name="link_faq_tts">https://github.com/ankidroid/Anki-Android/wiki/FAQ#tts--text-to-speech-is-not-speaking</string>
+    <string name="link_faq_missing_media" tools:ignore="Typos">https://github.com/ankidroid/Anki-Android/wiki/FAQ#why-doesnt-my-sound-or-image-work-on-ankidroid</string>
+    <string name="link_faq_invalid_protocol_relative">https://github.com/ankidroid/Anki-Android/wiki/FAQ#why-do-my-images-need-a-protocol</string>
+    <string name="link_faq_external_http_content">https://github.com/ankidroid/Anki-Android/wiki/FAQ#external-content</string>
+    <string name="shared_decks_url">https://ankiweb.net/shared/decks/</string>
+    <string name="repair_deck">https://docs.ankiweb.net/#/files?id=corrupt-collections</string>
+    <string name="resetpw_url">http://ankiweb.net/account/resetpw</string>
+    <string name="register_url">https://ankiweb.net/account/register</string>
+    <string name="link_reddit">https://www.reddit.com/r/Anki/</string>
+    <string name="link_discord">https://discord.gg/qjzcRTx</string>
+    <string name="link_facebook">https://www.facebook.com/AnkiDroid/</string>
+    <string name="link_twitter">https://twitter.com/ankidroid</string>
+    <string name="link_ankidroid_development_guide">https://github.com/ankidroid/Anki-Android/wiki/Development-Guide</string>
+    <string name="link_ankidroid_faq">https://github.com/ankidroid/Anki-Android/wiki/FAQ</string>
+    <string name="link_opencollective_donate">https://opencollective.com/ankidroid#section-contribute</string>
+    <string name="deck_conf_percent">XXX %</string>
+    <string name="answer_buttons_position_preference" translatable="false">answerButtonPosition</string>
     <string-array name="dictionary_labels">
         <item>None</item>
         <item>Aedict</item>
@@ -45,6 +85,7 @@
         <item>@string/custom_buttons_setting_menu_only</item>
         <item>@string/disabled</item>
     </string-array>
+    <!-- Link is in the name of Glutanimate - server admin -->
     <string-array name="dictionary_values">
         <item>0</item>
         <item>1</item>
@@ -72,7 +113,6 @@
         <item>@string/notification_minimum_cards_due</item>
         <item>@string/notification_minimum_cards_due</item>
     </string-array>
-
     <string-array name="notification_minimum_cards_due_values">
         <item>2000000</item>
         <item>1000000</item>
@@ -154,6 +194,7 @@
         <item>36</item> <!-- Replay voice -->
         <item>37</item> <!-- Toggle whiteboard -->
     </string-array>
+
     <string-array name="custom_button_values">
         <item>2</item>
         <item>1</item>
@@ -164,56 +205,15 @@
         <item>0</item>
         <item>3</item>
     </string-array>
-    <string name="link_anki">http://ankisrs.net</string>
-    <string name="link_anki_manual">https://docs.ankiweb.net/#/</string>
-    <string name="link_anki_forum">https://forums.ankiweb.net/</string>
-    <string name="link_forum">http://groups.google.com/group/anki-android</string>
-    <string name="link_wiki">https://github.com/ankidroid/Anki-Android/wiki</string>
-    <string name="link_issue_tracker">https://github.com/ankidroid/Anki-Android/issues</string>
-    <string name="licence_wiki">http://www.gnu.org/licenses/gpl.html</string>
-    <string name="link_source">https://github.com/ankidroid/Anki-Android</string>
-    <string name="link_donation">http://ankisrs.net/support</string>
-    <string name="link_market">market://details?id=com.ichi2.anki</string>
-    <string name="link_market_kindle">http://www.amazon.com/gp/mas/dl/android?p=com.ichi2.anki</string>
-    <string name="link_translation">http://crowdin.net/project/ankidroid</string>
-    <string name="link_wikipedia_open_source">http://en.wikipedia.org/wiki/Open_source_software</string>
-    <string name="link_contribution">https://github.com/ankidroid/Anki-Android/wiki/Contributing</string>
-    <string name="link_help">https://docs.ankidroid.org/help.html</string>
-    <string name="link_manual">https://docs.ankidroid.org/manual.html</string>
-    <string name="link_help_ja">https://docs.ankidroid.org/help-ja.html</string>
-    <string name="link_manual_ja">https://docs.ankidroid.org/manual-ja.html</string>
-    <string name="link_help_zh">https://docs.ankidroid.org/help-zh.html</string>
-    <string name="link_manual_zh">https://docs.ankidroid.org/manual-zh.html</string>
-    <string name="link_help_ar">https://docs.ankidroid.org/help-ar.html</string>
-    <string name="link_manual_ar">https://docs.ankidroid.org/manual-ar.html</string>
-    <string name="link_manual_note_format_toolbar">https://docs.ankidroid.org/manual.html#noteFormatToolbar</string>
-    <string name="link_faq_tts">https://github.com/ankidroid/Anki-Android/wiki/FAQ#tts--text-to-speech-is-not-speaking</string>
-    <string name="link_faq_missing_media" tools:ignore="Typos">https://github.com/ankidroid/Anki-Android/wiki/FAQ#why-doesnt-my-sound-or-image-work-on-ankidroid</string>
-    <string name="link_faq_invalid_protocol_relative">https://github.com/ankidroid/Anki-Android/wiki/FAQ#why-do-my-images-need-a-protocol</string>
-    <string name="link_faq_external_http_content">https://github.com/ankidroid/Anki-Android/wiki/FAQ#external-content</string>
-    <string name="shared_decks_url">https://ankiweb.net/shared/decks/</string>
-    <string name="repair_deck">https://docs.ankiweb.net/#/files?id=corrupt-collections</string>
-    <string name="resetpw_url">http://ankiweb.net/account/resetpw</string>
-    <string name="register_url">https://ankiweb.net/account/register</string>
-    <string name="link_reddit">https://www.reddit.com/r/Anki/</string>
-    <!-- Link is in the name of Glutanimate - server admin -->
-    <string name="link_discord">https://discord.gg/qjzcRTx</string>
-    <string name="link_facebook">https://www.facebook.com/AnkiDroid/</string>
-    <string name="link_twitter">https://twitter.com/ankidroid</string>
-    <string name="link_ankidroid_development_guide">https://github.com/ankidroid/Anki-Android/wiki/Development-Guide</string>
-    <string name="link_ankidroid_faq">https://github.com/ankidroid/Anki-Android/wiki/FAQ</string>
-    <string name="link_opencollective_donate">https://opencollective.com/ankidroid#section-contribute</string>
-
     <string-array name="leech_action_values">
         <item>0</item>
         <item>1</item>
     </string-array>
+
     <string-array name="new_order_values">
         <item>0</item>
         <item>1</item>
     </string-array>
-    <string name="deck_conf_percent">XXX %</string>
-
     <string-array name="cram_deck_conf_order_values">
         <item>0</item>
         <item>1</item>
@@ -243,22 +243,21 @@
         <item>1</item>
         <item>2</item>
     </string-array>
+
     <string-array name="full_screen_mode_labels">
         <item>@string/full_screen_off</item>
         <item>@string/full_screen_system</item>
         <item>@string/full_screen_complete</item>
     </string-array>
-
     <string-array name="day_theme_values">
         <item>0</item>
         <item>1</item>
     </string-array>
+
     <string-array name="night_theme_values">
         <item>0</item>
         <item>1</item>
     </string-array>
-
-    <string name="answer_buttons_position_preference" translatable="false">answerButtonPosition</string>
     <string-array name="answer_buttons_position" translatable="false">
         <item>top</item>
         <item>bottom</item>
@@ -271,5 +270,61 @@
         <item>large</item>
         <item>x-large</item>
         <item>xx-large</item>
+
+    </string-array>
+    <string-array name="error_reporting_choice_labels">
+        <item>@string/error_reporting_choice_labels_always_report</item>
+        <item>@string/error_reporting_choice_labels_never_report</item>
+        <item>@string/error_reporting_choice_labels_ask_me</item>
+    </string-array>
+    <string-array name="leech_action_labels">
+        <item>@string/leech_action_labels_suspend_card</item>
+        <item>@string/leech_action_labels_tag_only</item>
+    </string-array>
+    <string-array name="new_order_labels">
+        <item>@string/new_order_labels_new_cards_in_random_order</item>
+        <item>@string/new_order_labels_new_cards_in_order_added</item>
+    </string-array>
+    <string-array name="cram_deck_conf_order_labels">
+        <item>@string/cram_deck_conf_order_labels_oldest_seen_first</item>
+        <item>@string/cram_deck_conf_order_labels_random</item>
+        <item>@string/cram_deck_conf_order_labels_increasing_intervals</item>
+        <item>@string/cram_deck_conf_order_labels_decreasing_intervals</item>
+        <item>@string/cram_deck_conf_order_labels_most_lapsed</item>
+        <item>@string/cram_deck_conf_order_labels_order_added</item>
+        <item>@string/cram_deck_conf_order_labels_order_due</item>
+        <item>@string/cram_deck_conf_order_labels_latest_added_first</item>
+        <item>@string/cram_deck_conf_order_labels_relative_overdueness</item>
+    </string-array>
+    <string-array name="add_to_cur_labels">
+        <item>@string/add_to_cur_labels_use_current_deck</item>
+        <item>@string/add_to_cur_labels_decide_by_note_type</item>
+    </string-array>
+    <string-array name="new_spread_labels">
+        <item>@string/new_spread_labels_mix_new_cards_and_reviews</item>
+        <item>@string/new_spread_labels_new_cards_after_reviews</item>
+        <item>@string/new_spread_labels_new_cards_before_reviews</item>
+    </string-array>
+    <string-array name="override_font_labels">
+        <item>@string/override_font_labels_when_no_font_specified_on_flashcards</item>
+        <item>@string/override_font_labels_always</item>
+    </string-array>
+    <string-array name="day_theme_labels">
+        <item>@string/day_theme_labels_light</item>
+        <item>@string/day_theme_labels_plain</item>
+    </string-array>
+    <string-array name="night_theme_labels">
+        <item>@string/night_theme_labels_black</item>
+        <item>@string/night_theme_labels_dark</item>
+    </string-array>
+    <string-array name="html_size_code_labels">
+        <item>@string/html_size_code_labels_xx_small</item>
+        <item>@string/html_size_code_labels_x_small</item>
+        <item>@string/html_size_code_labels_small</item>
+        <item>@string/html_size_code_labels_medium</item>
+        <item>@string/html_size_code_labels_large</item>
+        <item>@string/html_size_code_labels_x_large</item>
+        <item>@string/html_size_code_labels_xx_large</item>
+
     </string-array>
 </resources>
