@@ -19,6 +19,7 @@ package com.ichi2.anki;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Environment;
+import android.preference.PreferenceManager;
 import android.text.format.Formatter;
 
 import androidx.annotation.NonNull;
@@ -27,19 +28,13 @@ import androidx.annotation.Nullable;
 import com.ichi2.anki.exception.StorageAccessException;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Storage;
-import com.ichi2.libanki.exception.UnknownDatabaseVersionException;
-import com.ichi2.libanki.utils.SystemTime;
-import com.ichi2.libanki.utils.Time;
 import com.ichi2.preferences.PreferenceExtensions;
 import com.ichi2.utils.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
 
-import androidx.annotation.VisibleForTesting;
 import timber.log.Timber;
-
-import static com.ichi2.libanki.Consts.SCHEMA_VERSION;
 
 /**
  * Singleton which opens, stores, and closes the reference to the Collection.
@@ -48,6 +43,8 @@ public class CollectionHelper {
 
     // Collection instance belonging to sInstance
     private Collection mCollection;
+    // Path to collection, cached for the reopenCollection() method
+    private String mPath;
     // Name of anki2 file
     public static final String COLLECTION_FILENAME = "collection.anki2";
 
@@ -70,11 +67,9 @@ public class CollectionHelper {
     }
 
     public synchronized void lockCollection() {
-        Timber.i("Locked Collection - Collection Loading should fail");
         mCollectionLocked = true;
     }
     public synchronized void unlockCollection() {
-        Timber.i("Unlocked Collection");
         mCollectionLocked = false;
     }
     public synchronized boolean isCollectionLocked() {
@@ -85,10 +80,8 @@ public class CollectionHelper {
     /**
      * Lazy initialization holder class idiom. High performance and thread safe way to create singleton.
      */
-    @VisibleForTesting
-    public static class LazyHolder {
-        @VisibleForTesting
-        public static CollectionHelper INSTANCE = new CollectionHelper();
+    private static class LazyHolder {
+        private static final CollectionHelper INSTANCE = new CollectionHelper();
     }
 
     /**
@@ -105,41 +98,22 @@ public class CollectionHelper {
      * @return instance of the Collection
      */
     public synchronized Collection getCol(Context context) {
-        if (colIsOpen()) {
-            return mCollection;
-        }
-        return getCol(context, new SystemTime());
-    }
-
-    @VisibleForTesting
-    public synchronized Collection getCol(Context context, @NonNull Time time) {
         // Open collection
         if (!colIsOpen()) {
             String path = getCollectionPath(context);
             // Check that the directory has been created and initialized
             try {
                 initializeAnkiDroidDirectory(getParentDirectory(path));
-                // Path to collection, cached for the reopenCollection() method
+                mPath = path;
             } catch (StorageAccessException e) {
                 Timber.e(e, "Could not initialize AnkiDroid directory");
                 return null;
             }
             // Open the database
-            Timber.i("Begin openCollection: %s", path);
-            mCollection = Storage.Collection(context, path, false, true, time);
-            Timber.i("End openCollection: %s", path);
+            Timber.i("openCollection: %s", path);
+            mCollection = Storage.Collection(context, path, false, true);
         }
         return mCollection;
-    }
-
-    /** Collection time if possible, otherwise real time.*/
-    public synchronized Time getTimeSafe(Context context) {
-        try {
-            return getCol(context).getTime();
-        } catch (Exception e) {
-            Timber.w(e);
-            return new SystemTime();
-        }
     }
 
     /**
@@ -152,7 +126,6 @@ public class CollectionHelper {
         try {
             return getCol(context);
         } catch (Exception e) {
-            Timber.w(e);
             AnkiDroidApp.sendExceptionReport(e, "CollectionHelper.getColSafe");
             return null;
         }
@@ -196,10 +169,10 @@ public class CollectionHelper {
         // Create specified directory if it doesn't exit
         File dir = new File(path);
         if (!dir.exists() && !dir.mkdirs()) {
-            throw new StorageAccessException("Failed to create AnkiDroid directory " + path);
+            throw new StorageAccessException("Failed to create AnkiDroid directory");
         }
         if (!dir.canWrite()) {
-            throw new StorageAccessException("No write access to AnkiDroid directory " + path);
+            throw new StorageAccessException("No write access to AnkiDroid directory");
         }
         // Add a .nomedia file to it if it doesn't exist
         File nomedia = new File(dir, ".nomedia");
@@ -207,7 +180,7 @@ public class CollectionHelper {
             try {
                 nomedia.createNewFile();
             } catch (IOException e) {
-                throw new StorageAccessException("Failed to create .nomedia file", e);
+                throw new StorageAccessException("Failed to create .nomedia file");
             }
         }
     }
@@ -222,7 +195,6 @@ public class CollectionHelper {
             initializeAnkiDroidDirectory(getCurrentAnkiDroidDirectory(context));
             return true;
         } catch (StorageAccessException e) {
-            Timber.w(e);
             return false;
         }
     }
@@ -234,9 +206,8 @@ public class CollectionHelper {
      * external storage directory.
      * @return the folder path
      */
-    @SuppressWarnings("deprecation") // TODO Tracked in https://github.com/ankidroid/Anki-Android/issues/5304
     public static String getDefaultAnkiDroidDirectory() {
-        return new File(Environment.getExternalStorageDirectory(), "AnkiDroid").getAbsolutePath();
+        return new File(Environment.getExternalStorageDirectory(), "AnkiDroid_Default").getAbsolutePath();
     }
 
     /**
@@ -252,7 +223,7 @@ public class CollectionHelper {
      * @return the absolute path to the AnkiDroid directory.
      */
     public static String getCurrentAnkiDroidDirectory(Context context) {
-        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(context);
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
         return PreferenceExtensions.getOrSetString(
                 preferences,
                 "deckPath",
@@ -368,31 +339,4 @@ public class CollectionHelper {
             return insufficientSpace + insufficientSpaceCurrentFree;
         }
     }
-
-    /** Fetches additional collection data not required for
-     * application startup
-     *
-     * Allows mandatory startup procedures to return early, speeding up startup. Less important tasks are offloaded here
-     * No-op if data is already fetched
-     */
-    public static void loadCollectionComplete(Collection col) {
-        col.getModels();
-    }
-
-    public static boolean isFutureAnkiDroidVersion(Context context) throws UnknownDatabaseVersionException {
-        int databaseVersion = getDatabaseVersion(context);
-        return databaseVersion > SCHEMA_VERSION;
-    }
-
-
-    public static int getDatabaseVersion(Context context) throws UnknownDatabaseVersionException {
-        try {
-            Collection col = getInstance().mCollection;
-            return col.queryVer();
-        } catch (Exception e) {
-            Timber.w(e, "Failed to query version");
-            return Storage.getDatabaseVersion(getCollectionPath(context));
-        }
-    }
-
 }

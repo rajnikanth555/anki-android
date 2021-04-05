@@ -22,7 +22,6 @@ import android.content.SharedPreferences;
 import com.ichi2.compat.CompatHelper;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Utils;
-import com.ichi2.libanki.utils.Time;
 import com.ichi2.utils.FileUtil;
 
 import java.io.BufferedOutputStream;
@@ -35,12 +34,12 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.UnknownFormatConversionException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import androidx.annotation.NonNull;
 import timber.log.Timber;
 
 public class BackupManager {
@@ -85,18 +84,18 @@ public class BackupManager {
     }
 
 
-    public static boolean performBackupInBackground(String path, @NonNull Time time) {
-        return performBackupInBackground(path, BACKUP_INTERVAL, false, time);
+    public static boolean performBackupInBackground(String path) {
+        return performBackupInBackground(path, BACKUP_INTERVAL, false);
     }
 
 
-    public static boolean performBackupInBackground(String path, boolean force, @NonNull Time time) {
-        return performBackupInBackground(path, BACKUP_INTERVAL, force, time);
+    public static boolean performBackupInBackground(String path, boolean force) {
+        return performBackupInBackground(path, BACKUP_INTERVAL, force);
     }
 
 
     @SuppressWarnings("PMD.NPathComplexity")
-    private static boolean performBackupInBackground(final String colPath, int interval, boolean force, @NonNull Time time) {
+    private static boolean performBackupInBackground(final String colPath, int interval, boolean force) {
         SharedPreferences prefs = AnkiDroidApp.getSharedPrefs(AnkiDroidApp.getInstance().getBaseContext());
         if (prefs.getInt("backupMax", 8) == 0 && !force) {
             Timber.w("backups are disabled");
@@ -111,7 +110,8 @@ public class BackupManager {
         }
 
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-HH-mm", Locale.US);
-        Calendar cal = time.gregorianCalendar();
+        Calendar cal = new GregorianCalendar();
+        cal.setTimeInMillis(System.currentTimeMillis());
 
         // Abort backup if one was already made less than 5 hours ago
         Date lastBackupDate = null;
@@ -121,11 +121,10 @@ public class BackupManager {
                 lastBackupDate = df.parse(deckBackups[len].getName().replaceAll(
                         "^.*-(\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}).colpkg$", "$1"));
             } catch (ParseException e) {
-                Timber.w(e);
                 lastBackupDate = null;
             }
         }
-        if (lastBackupDate != null && lastBackupDate.getTime() + interval * 3600000L > time.intTimeMS() && !force) {
+        if (lastBackupDate != null && lastBackupDate.getTime() + interval * 3600000L > Utils.intTime(1000) && !force) {
             Timber.d("performBackup: No backup created. Last backup younger than 5 hours");
             return false;
         }
@@ -222,8 +221,6 @@ public class BackupManager {
     public static boolean repairCollection(Collection col) {
         String deckPath = col.getPath();
         File deckFile = new File(deckPath);
-        Time time = col.getTime();
-        Timber.i("BackupManager - RepairCollection - Closing Collection");
         col.close();
 
         // repair file
@@ -235,11 +232,11 @@ public class BackupManager {
             process.waitFor();
 
             if (!new File(deckPath + ".tmp").exists()) {
-                Timber.e("repairCollection - dump to %s.tmp failed", deckPath);
+                Timber.e("repairCollection - dump to " + deckPath + ".tmp failed");
                 return false;
             }
 
-            if (!moveDatabaseToBrokenFolder(deckPath, false, time)) {
+            if (!moveDatabaseToBrokenFolder(deckPath, false)) {
                 Timber.e("repairCollection - could not move corrupt file to broken folder");
                 return false;
             }
@@ -253,18 +250,18 @@ public class BackupManager {
     }
 
 
-    public static boolean moveDatabaseToBrokenFolder(String colPath, boolean moveConnectedFilesToo, Time time) {
+    public static boolean moveDatabaseToBrokenFolder(String colPath, boolean moveConnectedFilesToo) {
         File colFile = new File(colPath);
 
         // move file
-        Date value = time.genToday(Time.utcOffset());
+        Date value = Utils.genToday(Utils.utcOffset());
         String movedFilename = String.format(Utils.ENGLISH_LOCALE, colFile.getName().replace(".anki2", "")
                 + "-corrupt-%tF.anki2", value);
         File movedFile = new File(getBrokenDirectory(colFile.getParentFile()), movedFilename);
         int i = 1;
         while (movedFile.exists()) {
             movedFile = new File(getBrokenDirectory(colFile.getParentFile()), movedFilename.replace(".anki2",
-                    "-" + i + ".anki2"));
+                    "-" + Integer.toString(i) + ".anki2"));
             i++;
         }
         movedFilename = movedFile.getName();
@@ -292,7 +289,7 @@ public class BackupManager {
         if (files == null) {
             files = new File[0];
         }
-        ArrayList<File> deckBackups = new ArrayList<>(files.length);
+        ArrayList<File> deckBackups = new ArrayList<>();
         for (File aktFile : files) {
             if (aktFile.getName().replaceAll("^(.*)-\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}.(apkg|colpkg)$", "$1")
                     .equals(colFile.getName().replace(".anki2",""))) {
