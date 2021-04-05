@@ -54,9 +54,9 @@ import com.ichi2.anki.web.CustomSyncServer;
 import com.ichi2.compat.CompatHelper;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Utils;
-import com.ichi2.libanki.backend.exception.BackendNotSupportedException;
-import com.ichi2.libanki.sched.AbstractSched;
 import com.ichi2.preferences.NumberRangePreference;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 import com.ichi2.themes.Themes;
 import com.ichi2.ui.AppCompatPreferenceActivity;
 import com.ichi2.ui.ConfirmationPreference;
@@ -197,6 +197,25 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                     mCategory.removePreference(mCheckBoxPref_Vibrate);
                     mCategory.removePreference(mCheckBoxPref_Blink);
                 }
+                try {
+                    // This works on an API 19 emulator
+                    // use icon= once we're past API 21
+                    // ----
+                    // android.content.res.Resources$NotFoundException: File res/drawable/ic_language_black_24dp.xml
+                    // from drawable resource ID #0x7f0800d7. If the resource you are trying to use is a vector
+                    // resource, you may be referencing it in an unsupported way.
+                    // See AppCompatDelegate.setCompatVectorFromResourcesEnabled() for more info.
+                    Drawable languageIcon = VectorDrawableCompat.create(
+                            getResources(),
+                            R.drawable.ic_language_black_24dp,
+                            getTheme());
+
+                    screen.findPreference("language").setIcon(languageIcon);
+                } catch (Exception e) {
+                    Timber.w(e, "Failed to set language icon");
+                }
+
+
                 // Build languages
                 initializeLanguageDialog(screen);
                 break;
@@ -374,14 +393,15 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                     });
                     screen.addPreference(lockDbPreference);
                 }
-                // Adding change logs in both debug and release builds
-                Timber.i("Adding open changelog");
-                android.preference.Preference changelogPreference = new android.preference.Preference(this);
-                changelogPreference.setTitle(R.string.open_changelog);
-                Intent infoIntent = new Intent(this, Info.class);
-                infoIntent.putExtra(Info.TYPE_EXTRA, Info.TYPE_NEW_VERSION);
-                changelogPreference.setIntent(infoIntent);
-                screen.addPreference(changelogPreference);
+                if (BuildConfig.DEBUG) {
+                    Timber.i("Debug mode, adding show changelog");
+                    android.preference.Preference changelogPreference = new android.preference.Preference(this);
+                    changelogPreference.setTitle("Open Changelog");
+                    Intent infoIntent = new Intent(this, Info.class);
+                    infoIntent.putExtra(Info.TYPE_EXTRA, Info.TYPE_NEW_VERSION);
+                    changelogPreference.setIntent(infoIntent);
+                    screen.addPreference(changelogPreference);
+                }
                 // Force full sync option
                 ConfirmationPreference fullSyncPreference = (ConfirmationPreference)screen.findPreference("force_full_sync");
                 fullSyncPreference.setDialogMessage(R.string.force_full_sync_summary);
@@ -488,7 +508,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 UIUtils.showThemedToast(this, getString(R.string.no_image_selected), false);
             }
         } catch (OutOfMemoryError | Exception e) {
-            Timber.w(e);
             UIUtils.showThemedToast(this, getString(R.string.error_selecting_image, e.getLocalizedMessage()), false);
         }
     }
@@ -503,7 +522,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 Intent openThirdPartyAppsIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(githubThirdPartyAppsUrl));
                 super.startActivity(openThirdPartyAppsIntent);
             } catch (ActivityNotFoundException e) {
-                Timber.w(e);
                 //We use a different message here. We have limited space in the snackbar
                 String error = getString(R.string.activity_start_failed_load_url, githubThirdPartyAppsUrl);
                 UIUtils.showSimpleSnackbar(this, error, false);
@@ -569,14 +587,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                         case "dayOffset":
                             Calendar calendar = col.crtGregorianCalendar();
                             ((SeekBarPreference)pref).setValue(calendar.get(Calendar.HOUR_OF_DAY));
-                            break;
-                        case "newTimezoneHandling":
-                            android.preference.CheckBoxPreference checkBox = (android.preference.CheckBoxPreference) pref;
-                            checkBox.setChecked(col.getSched()._new_timezone_enabled());
-                            if (col.schedVer() <= 1 || !col.isUsingRustBackend()) {
-                                Timber.d("Disabled 'newTimezoneHandling' box");
-                                checkBox.setEnabled(false);
-                            }
                             break;
                         case "schedVer":
                             ((android.preference.CheckBoxPreference)pref).setChecked(conf.optInt("schedVer", 1) == 2);
@@ -679,7 +689,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                     break;
                 }
                 case AnkiDroidApp.FEEDBACK_REPORT_KEY: {
-                    String value = prefs.getString(AnkiDroidApp.FEEDBACK_REPORT_KEY, "");
+                    String value = Prefs.getString(prefs, PreferenceKeys.FeedbackReportKey);
                     AnkiDroidApp.getInstance().setAcraReportingMode(value);
                     // If the user changed error reporting, make sure future reports have a chance to post
                     AnkiDroidApp.deleteACRALimiterData(this);
@@ -688,8 +698,8 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                     break;
                 }
                 case "syncAccount": {
-                    SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getBaseContext());
-                    String username = preferences.getString("username", "");
+                    Prefs preferences = Prefs.fromContext(getBaseContext());
+                    String username = preferences.getString(PreferenceKeys.Username);
                     android.preference.Preference syncAccount = screen.findPreference("syncAccount");
                     if (syncAccount != null) {
                         if (TextUtils.isEmpty(username)) {
@@ -712,25 +722,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                         Timber.i("AnkiDroid ContentProvider disabled by user");
                     }
                     pm.setComponentEnabledSetting(providerName, state, PackageManager.DONT_KILL_APP);
-                    break;
-                }
-                case "newTimezoneHandling" : {
-                    if (getCol().schedVer() != 1 && getCol().isUsingRustBackend()) {
-                        AbstractSched sched = getCol().getSched();
-                        boolean was_enabled = sched._new_timezone_enabled();
-                        boolean is_enabled = ((android.preference.CheckBoxPreference) pref).isChecked();
-                        if (was_enabled != is_enabled) {
-                            if (is_enabled) {
-                                try {
-                                    sched.set_creation_offset();
-                                } catch (BackendNotSupportedException e) {
-                                    throw e.alreadyUsingRustBackend();
-                                }
-                            } else {
-                                sched.clear_creation_offset();
-                            }
-                        }
-                    }
                     break;
                 }
                 case "schedVer": {
@@ -801,7 +792,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
 
 
     private void updateGestureCornerTouch(android.preference.PreferenceScreen screen) {
-        boolean gestureCornerTouch = AnkiDroidApp.getSharedPrefs(this).getBoolean("gestureCornerTouch", false);
+        boolean gestureCornerTouch = Prefs.fromContext(this).getBoolean(PreferenceKeys.GestureCornerTouch);
         if (gestureCornerTouch) {
             screen.findPreference("gestureTapTop").setTitle(R.string.gestures_corner_tap_top_center);
             screen.findPreference("gestureTapLeft").setTitle(R.string.gestures_corner_tap_middle_left);
@@ -847,7 +838,7 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 }
                 break;
             case "advanced_statistics_link":
-                if (!AnkiDroidApp.getSharedPrefs(this).getBoolean("advanced_statistics_enabled", false)) {
+                if (!Prefs.fromContext(this).getBoolean(PreferenceKeys.AdvancedStatisticsEnabled)) {
                     pref.setSummary(R.string.disabled);
                 } else {
                     pref.setSummary(R.string.enabled);
@@ -869,7 +860,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 return;
             }
         } catch (NullPointerException e) {
-            Timber.w(e);
             value = "";
         }
         // Get summary text
@@ -901,7 +891,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
             Double.parseDouble(value);
             return replaceString(str, value);
         } catch (NumberFormatException e){
-            Timber.w(e);
             return value;
         }
     }

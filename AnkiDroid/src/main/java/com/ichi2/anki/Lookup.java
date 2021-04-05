@@ -4,12 +4,13 @@ package com.ichi2.anki;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 
 import com.afollestad.materialdialogs.MaterialDialog;
-import com.ichi2.anki.analytics.UsageAnalytics;
+
 import com.ichi2.libanki.Utils;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 
 import timber.log.Timber;
 
@@ -18,7 +19,7 @@ public class Lookup {
     /**
      * Searches
      */
-    private static final int DICTIONARY_NONE = 0;    // use no dictionary
+    public static final int DICTIONARY_NONE = 0;    // use no dictionary
     private static final int DICTIONARY_AEDICT = 1;  // Japanese dictionary
     private static final int DICTIONARY_EIJIRO_WEB = 2; // japanese web dictionary
     private static final int DICTIONARY_LEO_WEB = 3; // German web dictionary for English, French, Spanish, Italian,
@@ -38,8 +39,8 @@ public class Lookup {
 
     public static boolean initialize(Context context) {
         mContext = context;
-        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(AnkiDroidApp.getInstance().getBaseContext());
-        mDictionary = Integer.parseInt(preferences.getString("dictionary", Integer.toString(DICTIONARY_NONE)));
+        Prefs preferences = Prefs.fromContext(AnkiDroidApp.getInstance().getBaseContext());
+        mDictionary = preferences.getIntFromStr(PreferenceKeys.Dictionary);
         switch (mDictionary) {
             case DICTIONARY_AEDICT:
                 mDictionaryAction = "sk.baka.aedict.action.ACTION_SEARCH_EDICT";
@@ -87,7 +88,6 @@ public class Lookup {
                 Intent aedictSearchIntent = new Intent(mDictionaryAction);
                 aedictSearchIntent.putExtra("kanjis", text);
                 mContext.startActivity(aedictSearchIntent);
-                UsageAnalytics.sendAnalyticsEvent(Lookup.class.getSimpleName(), UsageAnalytics.Actions.AEDICT);
                 return true;
             case DICTIONARY_LEO_WEB:
             case DICTIONARY_LEO_APP:
@@ -115,30 +115,25 @@ public class Lookup {
                             mLookupText = "";
                         })
                         .build().show();
-                UsageAnalytics.sendAnalyticsEvent(Lookup.class.getSimpleName(), UsageAnalytics.Actions.LEO);
                 return true;
             case DICTIONARY_COLORDICT:
                 Intent colordictSearchIntent = new Intent(mDictionaryAction);
                 colordictSearchIntent.putExtra("EXTRA_QUERY", text);
                 mContext.startActivity(colordictSearchIntent);
-                UsageAnalytics.sendAnalyticsEvent(Lookup.class.getSimpleName(), UsageAnalytics.Actions.COLORDICT);
                 return true;
             case DICTIONARY_FORA:
                 Intent foraSearchIntent = new Intent(mDictionaryAction);
                 foraSearchIntent.putExtra("HEADWORD", text.trim());
                 mContext.startActivity(foraSearchIntent);
-                UsageAnalytics.sendAnalyticsEvent(Lookup.class.getSimpleName(), UsageAnalytics.Actions.FORA);
                 return true;
             case DICTIONARY_NCIKU_WEB:
                 Intent ncikuWebIntent = new Intent(mDictionaryAction, Uri.parse("http://m.nciku.com/en/entry/?query="
                         + text));
                 mContext.startActivity(ncikuWebIntent);
-                UsageAnalytics.sendAnalyticsEvent(Lookup.class.getSimpleName(), UsageAnalytics.Actions.NCIKU);
                 return true;
             case DICTIONARY_EIJIRO_WEB:
                 Intent eijiroWebIntent = new Intent(mDictionaryAction, Uri.parse("http://eow.alc.co.jp/" + text));
                 mContext.startActivity(eijiroWebIntent);
-                UsageAnalytics.sendAnalyticsEvent(Lookup.class.getSimpleName(), UsageAnalytics.Actions.EIJIRO);
                 return true;
         }
         return false;
@@ -192,4 +187,5 @@ public class Lookup {
         // mCurrentCard.getCardModelId(), false).getId(), mCurrentCard.getCardModelId(), questionAnswer, language);
         // }
     }
+
 }

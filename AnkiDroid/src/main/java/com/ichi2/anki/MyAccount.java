@@ -18,12 +18,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
 
 import android.view.KeyEvent;
@@ -31,7 +28,6 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.afollestad.materialdialogs.MaterialDialog;
@@ -39,6 +35,8 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.ichi2.anki.web.HostNumFactory;
 import com.ichi2.async.Connection;
 import com.ichi2.async.Connection.Payload;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 import com.ichi2.themes.StyledProgressDialog;
 import com.ichi2.ui.TextInputEditField;
 import com.ichi2.utils.AdaptionUtil;
@@ -65,12 +63,11 @@ public class MyAccount extends AnkiActivity {
     Toolbar mToolbar = null;
     private TextInputLayout mPasswordLayout;
 
-    private ImageView mAnkidroidLogo;
 
     private void switchToState(int newState) {
         switch (newState) {
             case STATE_LOGGED_IN:
-                String username = AnkiDroidApp.getSharedPrefs(getBaseContext()).getString("username", "");
+                String username = Prefs.getString(getBaseContext(), PreferenceKeys.Username);
                 mUsernameLoggedIn.setText(username);
                 mToolbar = mLoggedIntoMyAccountView.findViewById(R.id.toolbar);
                 if (mToolbar!= null) {
@@ -110,16 +107,10 @@ public class MyAccount extends AnkiActivity {
         initAllContentViews();
 
         SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getBaseContext());
-        if (preferences.getString("hkey", "").length() > 0) {
+        if (Prefs.getString(preferences, PreferenceKeys.HKey).length() > 0) {
             switchToState(STATE_LOGGED_IN);
         } else {
             switchToState(STATE_LOG_IN);
-        }
-
-        if (isScreenSmall() && this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            mAnkidroidLogo.setVisibility(View.GONE);
-        } else {
-            mAnkidroidLogo.setVisibility(View.VISIBLE);
         }
     }
 
@@ -155,18 +146,6 @@ public class MyAccount extends AnkiActivity {
         String username = mUsername.getText().toString().trim(); // trim spaces, issue 1586
         String password = mPassword.getText().toString();
 
-        if (username.isEmpty()) {
-            mUsername.setError(getString(R.string.email_id_empty));
-            mUsername.requestFocus();
-            return;
-        }
-        if (password.isEmpty()) {
-            mPassword.setError(getString(R.string.password_empty));
-            mPassword.requestFocus();
-            return;
-
-        }
-
         if (!"".equalsIgnoreCase(username) && !"".equalsIgnoreCase(password)) {
             Connection.login(loginListener, new Connection.Payload(new Object[]{username, password,
                     HostNumFactory.getInstance(this) }));
@@ -199,7 +178,6 @@ public class MyAccount extends AnkiActivity {
         mUsername = mLoginToMyAccountView.findViewById(R.id.username);
         mPassword = mLoginToMyAccountView.findViewById(R.id.password);
         mPasswordLayout = mLoginToMyAccountView.findViewById(R.id.password_layout);
-        mAnkidroidLogo = mLoginToMyAccountView.findViewById(R.id.ankidroid_logo);
 
         mPassword.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
@@ -257,7 +235,7 @@ public class MyAccount extends AnkiActivity {
         public void onPreExecute() {
             Timber.d("loginListener.onPreExecute()");
             if (mProgressDialog == null || !mProgressDialog.isShowing()) {
-                mProgressDialog = StyledProgressDialog.show(MyAccount.this, null,
+                mProgressDialog = StyledProgressDialog.show(MyAccount.this, "",
                         getResources().getString(R.string.alert_logging_message), false);
             }
         }
@@ -321,21 +299,6 @@ public class MyAccount extends AnkiActivity {
         return exception.getLocalizedMessage();
     }
 
-    private boolean isScreenSmall() {
-        return (this.getApplicationContext().getResources().getConfiguration().screenLayout
-                & Configuration.SCREENLAYOUT_SIZE_MASK)
-                < Configuration.SCREENLAYOUT_SIZE_LARGE;
-    }
-
-    @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        if (isScreenSmall() && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            mAnkidroidLogo.setVisibility(View.GONE);
-        } else {
-            mAnkidroidLogo.setVisibility(View.VISIBLE);
-        }
-    }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -346,4 +309,5 @@ public class MyAccount extends AnkiActivity {
         }
         return super.onKeyDown(keyCode, event);
     }
+
 }

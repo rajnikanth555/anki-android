@@ -78,6 +78,8 @@ import com.ichi2.libanki.Consts;
 import com.ichi2.libanki.Decks;
 import com.ichi2.libanki.Utils;
 import com.ichi2.libanki.Deck;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 import com.ichi2.themes.Themes;
 import com.ichi2.upgrade.Upgrade;
 import com.ichi2.utils.BooleanGetter;
@@ -111,7 +113,7 @@ import static com.ichi2.libanki.stats.Stats.SECONDS_PER_DAY;
 import static com.ichi2.anim.ActivityTransitionAnimation.Direction.*;
 
 public class CardBrowser extends NavigationDrawerActivity implements
-        DeckDropDownAdapter.SubtitleListener, TagsDialog.TagsDialogListener {
+        DeckDropDownAdapter.SubtitleListener {
 
     enum Column {
         QUESTION,
@@ -172,7 +174,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
     private static final int ADD_NOTE = 1;
     private static final int PREVIEW_CARDS = 2;
 
-    private static final int DEFAULT_FONT_SIZE_RATIO = 100;
     // Should match order of R.array.card_browser_order_labels
     public static final int CARD_ORDER_NONE = 0;
     private static final String[] fSortTypes = new String[] {
@@ -531,7 +532,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
         Timber.d("onCollectionLoaded()");
         registerExternalStorageListener();
 
-        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getBaseContext());
+        Prefs preferences = Prefs.fromContext(getBaseContext());
 
         // Load reference to action bar title
         mActionBarTitle = findViewById(R.id.toolbar_title);
@@ -566,7 +567,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
                 break;
             }
         }
-        if (mOrder == 1 && preferences.getBoolean("cardBrowserNoSorting", false)) {
+        if (mOrder == 1 && preferences.getBoolean(PreferenceKeys.CardBrowserNoSorting)) {
             mOrder = 0;
         }
         //This upgrade should already have been done during
@@ -583,7 +584,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
                 R.array.browser_column1_headings, android.R.layout.simple_spinner_item);
         column1Adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         cardsColumn1Spinner.setAdapter(column1Adapter);
-        mColumn1Index = AnkiDroidApp.getSharedPrefs(getBaseContext()).getInt("cardBrowserColumn1", 0);
+        mColumn1Index = preferences.getInt(PreferenceKeys.CardBrowserColumn1);
         cardsColumn1Spinner.setOnItemSelectedListener(new OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
@@ -604,7 +605,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
             }
         });
         // Load default value for column2 selection
-        mColumn2Index = AnkiDroidApp.getSharedPrefs(getBaseContext()).getInt("cardBrowserColumn2", 0);
+        mColumn2Index = preferences.getInt(PreferenceKeys.CardBrowserColumn2);
         // Setup the column 2 heading as a spinner so that users can easily change the column type
         Spinner cardsColumn2Spinner = findViewById(R.id.browser_column2_spinner);
         ArrayAdapter<CharSequence> column2Adapter = ArrayAdapter.createFromResource(this,
@@ -632,8 +633,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
             }
         });
         // get the font and font size from the preferences
-        int sflRelativeFontSize = preferences.getInt("relativeCardBrowserFontSize", DEFAULT_FONT_SIZE_RATIO);
-        String sflCustomFont = preferences.getString("browserEditorFont", "");
+        int sflRelativeFontSize = preferences.getInt(PreferenceKeys.RelativeCardBrowserFontSize);
+        String sflCustomFont = preferences.getString(PreferenceKeys.BrowserEditorFont);
         Column[] columnsContent = {COLUMN1_KEYS[mColumn1Index], COLUMN2_KEYS[mColumn2Index]};
         // make a new list adapter mapping the data in mCards to column1 and column2 of R.layout.card_item_browser
         mCardsAdapter = new MultiColumnListAdapter(
@@ -666,28 +667,16 @@ public class CardBrowser extends NavigationDrawerActivity implements
             }
         });
         mCardsListView.setOnItemLongClickListener((adapterView, view, position, id) -> {
-            if (mInMultiSelectMode) {
-                for (int i = Math.min(mLastSelectedPosition, position); i <= Math.max(mLastSelectedPosition, position); i++) {
-                    // getting the view of particular view and then checking whether it's already checked or not
-                    View childView = mCardsListView.getChildAt(i);
-                    CheckBox cb = childView.findViewById(R.id.card_checkbox);
-                    if (!cb.isChecked()) {
-                        cb.toggle();
-                        onCheck(i, childView);
-                    }
-                }
-            } else {
-                mLastSelectedPosition = position;
-                saveScrollingState(position);
-                loadMultiSelectMode();
+            mLastSelectedPosition = position;
+            saveScrollingState(position);
+            loadMultiSelectMode();
 
-                // click on whole cell triggers select
-                CheckBox cb = view.findViewById(R.id.card_checkbox);
-                cb.toggle();
-                onCheck(position, view);
-                recenterListView(view);
-                mCardsAdapter.notifyDataSetChanged();
-            }
+            // click on whole cell triggers select
+            CheckBox cb = view.findViewById(R.id.card_checkbox);
+            cb.toggle();
+            onCheck(position, view);
+            recenterListView(view);
+            mCardsAdapter.notifyDataSetChanged();
             return true;
         });
 
@@ -1335,7 +1324,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         if (did != null && did > 0) {
             intent.putExtra(NoteEditor.EXTRA_DID, (long) did);
         }
-        intent.putExtra(NoteEditor.EXTRA_TEXT_FROM_SEARCH_VIEW, mSearchTerms);
         return intent;
     }
 
@@ -1409,7 +1397,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
 
     private void showTagsDialog() {
         TagsDialog dialog = TagsDialog.newInstance(
-                TagsDialog.DialogType.FILTER_BY_TAG, new ArrayList<>(0), new ArrayList<>(getCol().getTags().all()));
+                TagsDialog.TYPE_FILTER_BY_TAG, new ArrayList<>(0), new ArrayList<>(getCol().getTags().all()));
+        dialog.setTagsDialogListener(this::filterByTag);
         showDialogFragment(dialog);
     }
 
@@ -1456,8 +1445,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         savedInstanceState.putInt("mOldCardTopOffset", mOldCardTopOffset);
         savedInstanceState.putBoolean("mShouldRestoreScroll", mShouldRestoreScroll);
         savedInstanceState.putBoolean("mPostAutoScroll", mPostAutoScroll);
-        savedInstanceState.putInt("mLastSelectedPosition", mLastSelectedPosition);
-        savedInstanceState.putBoolean("mInMultiSelectMode", mInMultiSelectMode);
         super.onSaveInstanceState(savedInstanceState);
     }
 
@@ -1469,8 +1456,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         mOldCardTopOffset = savedInstanceState.getInt("mOldCardTopOffset");
         mShouldRestoreScroll = savedInstanceState.getBoolean("mShouldRestoreScroll");
         mPostAutoScroll = savedInstanceState.getBoolean("mPostAutoScroll");
-        mLastSelectedPosition = savedInstanceState.getInt("mLastSelectedPosition");
-        mInMultiSelectMode = savedInstanceState.getBoolean("mInMultiSelectMode");
         searchCards();
     }
 
@@ -1500,12 +1485,9 @@ public class CardBrowser extends NavigationDrawerActivity implements
             mSearchItem.expandActionView();
         }
         if (mSearchTerms.contains("deck:")) {
-            searchText = "(" + mSearchTerms + ")";
+            searchText = mSearchTerms;
         } else {
-            if (!"".equals(mSearchTerms))
-                searchText = mRestrictOnDeck + "(" + mSearchTerms + ")";
-            else
-                searchText = mRestrictOnDeck;
+            searchText = mRestrictOnDeck + mSearchTerms;
         }
         if (colIsOpen() && mCardsAdapter!= null) {
             // clear the existing card list
@@ -1582,9 +1564,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
     }
 
 
-    @Override
-    public void onSelectedTags(List<String> selectedTags, int option) {
-        //TODO: Duplication between here and CustomStudyDialog:onSelectedTags
+    private void filterByTag(List<String> selectedTags, int option) {
+        //TODO: Duplication between here and CustomStudyDialog:customStudyFromTags
         mSearchView.setQuery("", false);
         String tags = selectedTags.toString();
         mSearchView.setQueryHint(getResources().getString(R.string.CardEditorTags,
@@ -1746,7 +1727,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
 
     @CheckResult
     private static String formatQA(String text, Context context) {
-        boolean showFilenames = AnkiDroidApp.getSharedPrefs(context).getBoolean("card_browser_show_media_filenames", false);
+        boolean showFilenames = Prefs.fromContext(context).getBoolean(PreferenceKeys.CardBrowserShowMediaFilenames);
         return formatQAInternal(text, showFilenames);
     }
 
@@ -2878,7 +2859,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
 
     @VisibleForTesting
     void filterByTag(String... tags) {
-        onSelectedTags(Arrays.asList(tags), 0);
+        filterByTag(Arrays.asList(tags), 0);
     }
 
     @VisibleForTesting
@@ -2891,11 +2872,5 @@ public class CardBrowser extends NavigationDrawerActivity implements
     void replaceSelectionWith(int[] positions) {
         mCheckedCards.clear();
         checkCardsAtPositions(positions);
-    }
-
-    @VisibleForTesting
-    void searchCards(String searchQuery) {
-        mSearchTerms = searchQuery;
-        searchCards();
     }
 }

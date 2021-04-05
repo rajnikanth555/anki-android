@@ -24,8 +24,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.net.Uri;
@@ -35,13 +33,11 @@ import android.os.LocaleList;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.core.content.pm.PackageInfoCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 import android.view.ViewConfiguration;
 import android.webkit.CookieManager;
-import android.webkit.WebView;
 
 import com.ichi2.anki.analytics.AnkiDroidCrashReportDialog;
 import com.ichi2.anki.contextmenu.AnkiCardContextMenu;
@@ -51,6 +47,8 @@ import com.ichi2.anki.exception.StorageAccessException;
 import com.ichi2.anki.services.BootService;
 import com.ichi2.anki.services.NotificationService;
 import com.ichi2.compat.CompatHelper;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 import com.ichi2.utils.AdaptionUtil;
 import com.ichi2.utils.ExceptionUtil;
 import com.ichi2.utils.LanguageUtil;
@@ -72,14 +70,10 @@ import org.acra.config.ToastConfigurationBuilder;
 import org.acra.sender.HttpSender;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import androidx.webkit.WebViewCompat;
 import timber.log.Timber;
 import static timber.log.Timber.DebugTree;
 
@@ -201,7 +195,7 @@ public class AnkiDroidApp extends Application {
 
 
     public static boolean isInitialized() {
-        return sInstance != null;
+        return sInstance == null;
     }
 
 
@@ -236,8 +230,6 @@ public class AnkiDroidApp extends Application {
     private void setAcraConfigBuilder(CoreConfigurationBuilder acraCoreConfigBuilder) {
         this.acraCoreConfigBuilder = acraCoreConfigBuilder;
         ACRA.init(this, acraCoreConfigBuilder);
-        ACRA.getErrorReporter().putCustomData("WEBVIEW_VER_NAME", fetchWebViewInformation().get("WEBVIEW_VER_NAME"));
-        ACRA.getErrorReporter().putCustomData("WEBVIEW_VER_CODE", fetchWebViewInformation().get("WEBVIEW_VER_CODE"));
     }
 
     @Override
@@ -455,7 +447,7 @@ public class AnkiDroidApp extends Application {
             } else {
                 preferences = getSharedPrefs(remoteContext);
             }
-            Configuration langConfig = getLanguageConfig(remoteContext.getResources().getConfiguration(), preferences);
+            Configuration langConfig = getLanguageConfig(remoteContext.getResources().getConfiguration(), new Prefs(preferences));
             return remoteContext.createConfigurationContext(langConfig);
         } catch (Exception e) {
             Timber.e(e, "failed to update context with new language");
@@ -473,9 +465,9 @@ public class AnkiDroidApp extends Application {
      */
     @SuppressWarnings("deprecation")
     @NonNull
-    private static Configuration getLanguageConfig(@NonNull Configuration remoteConfig, @NonNull SharedPreferences prefs) {
+    private static Configuration getLanguageConfig(@NonNull Configuration remoteConfig, @NonNull Prefs prefs) {
         Configuration newConfig = new Configuration(remoteConfig);
-        Locale newLocale = LanguageUtil.getLocale(prefs.getString(Preferences.LANGUAGE, ""), prefs);
+        Locale newLocale = LanguageUtil.getLocale(prefs.getString(PreferenceKeys.Language), prefs);
         Timber.d("AnkiDroidApp::getLanguageConfig - setting locale to %s", newLocale);
         //API level >=24
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -499,10 +491,10 @@ public class AnkiDroidApp extends Application {
     }
 
 
-    public static boolean initiateGestures(SharedPreferences preferences) {
-        boolean enabled = preferences.getBoolean("gestures", false);
+    public static boolean initiateGestures(Prefs preferences) {
+        boolean enabled = preferences.getBoolean(PreferenceKeys.Gestures);
         if (enabled) {
-            int sensitivity = preferences.getInt("swipeSensitivity", 100);
+            int sensitivity = preferences.getInt(PreferenceKeys.SwipeSensitivity);
             if (sensitivity != 100) {
                 float sens = 100.0f/sensitivity;
                 sSwipeMinDistance = (int) (DEFAULT_SWIPE_MIN_DISTANCE * sens + 0.5f);
@@ -717,22 +709,6 @@ public class AnkiDroidApp extends Application {
                     break;
             }
         }
-    }
-
-    @NonNull
-    private HashMap<String, String> fetchWebViewInformation() {
-        HashMap<String, String> webViewInfo = new HashMap<>();
-        webViewInfo.put("WEBVIEW_VER_NAME", "");
-        webViewInfo.put("WEBVIEW_VER_CODE", "");
-        try {
-            PackageManager packageManager = getPackageManager();
-            PackageInfo pi = WebViewCompat.getCurrentWebViewPackage(this);
-            webViewInfo.put("WEBVIEW_VER_NAME", pi.versionName);
-            webViewInfo.put("WEBVIEW_VER_CODE", String.valueOf(PackageInfoCompat.getLongVersionCode(pi)));
-        } catch (Throwable e) {
-            Timber.w(e);
-        }
-        return webViewInfo;
     }
 
 }

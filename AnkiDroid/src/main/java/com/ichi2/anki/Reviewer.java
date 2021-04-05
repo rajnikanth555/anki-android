@@ -73,16 +73,18 @@ import com.ichi2.async.CollectionTask;
 import com.ichi2.async.TaskManager;
 import com.ichi2.libanki.Card;
 import com.ichi2.libanki.Collection;
+import com.ichi2.libanki.Collection.DismissType;
 import com.ichi2.libanki.Consts;
 import com.ichi2.libanki.Decks;
 import com.ichi2.libanki.Utils;
 import com.ichi2.libanki.sched.Counts;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 import com.ichi2.themes.Themes;
 import com.ichi2.utils.AndroidUiUtils;
 import com.ichi2.utils.FunctionalInterfaces.Consumer;
 import com.ichi2.utils.PairWithBoolean;
 import com.ichi2.utils.Permissions;
-import com.ichi2.utils.ViewGroupUtils;
 import com.ichi2.widget.WidgetStatus;
 
 import java.lang.ref.WeakReference;
@@ -206,12 +208,6 @@ public class Reviewer extends AbstractFlashcardViewer {
     }
 
     @Override
-    protected void recreateWebView() {
-        super.recreateWebView();
-        ViewGroupUtils.setRenderWorkaround(this);
-    }
-
-    @Override
     protected boolean shouldDisplayMark() {
         boolean markValue = super.shouldDisplayMark();
         if (!markValue) {
@@ -300,8 +296,6 @@ public class Reviewer extends AbstractFlashcardViewer {
         if (mPrefFullscreenReview) {
             setFullScreen(this);
         }
-
-        ViewGroupUtils.setRenderWorkaround(this);
     }
 
 
@@ -347,13 +341,13 @@ public class Reviewer extends AbstractFlashcardViewer {
             Timber.i("Reviewer:: Bury button pressed");
             if (!MenuItemCompat.getActionProvider(item).hasSubMenu()) {
                 Timber.d("Bury card due to no submenu");
-                dismiss(new CollectionTask.BuryCard(mCurrentCard));
+                dismiss(DismissType.BURY_CARD);
             }
         } else if (itemId == R.id.action_suspend) {
             Timber.i("Reviewer:: Suspend button pressed");
             if (!MenuItemCompat.getActionProvider(item).hasSubMenu()) {
                 Timber.d("Suspend card due to no submenu");
-                dismiss(new CollectionTask.SuspendCard(mCurrentCard));
+                dismiss(DismissType.SUSPEND_CARD);
             }
         } else if (itemId == R.id.action_delete) {
             Timber.i("Reviewer:: Delete note button pressed");
@@ -372,7 +366,6 @@ public class Reviewer extends AbstractFlashcardViewer {
                     String savedWhiteboardFileName = mWhiteboard.saveWhiteboard(getCol().getTime());
                     UIUtils.showThemedToast(Reviewer.this, getString(R.string.white_board_image_saved, savedWhiteboardFileName), true);
                 } catch (Exception e) {
-                    Timber.w(e);
                     UIUtils.showThemedToast(Reviewer.this, getString(R.string.white_board_image_save_failed, e.getLocalizedMessage()), true);
                 }
             }
@@ -512,9 +505,8 @@ public class Reviewer extends AbstractFlashcardViewer {
         }
     }
 
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if ((requestCode == REQUEST_AUDIO_PERMISSION) &&
+    public void onRequestPermissionsResult (int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if ( (requestCode == REQUEST_AUDIO_PERMISSION) &&
                 (permissions.length >= 1) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
             // Get get audio record permission, so we can create the record tool bar
             toggleMicToolBar();
@@ -614,7 +606,6 @@ public class Reviewer extends AbstractFlashcardViewer {
         MenuItem undoIcon = menu.findItem(R.id.action_undo);
         undoIcon.setIcon(undoIconId);
         undoIcon.setEnabled(undoEnabled).getIcon().mutate().setAlpha(alpha_undo);
-        undoIcon.getActionView().setEnabled(undoEnabled);
         if (colIsOpen()) { // Required mostly because there are tests where `col` is null
             undoIcon.setTitle(getResources().getString(R.string.studyoptions_congrats_undo, getCol().undoName(getResources())));
         }
@@ -916,10 +907,11 @@ public class Reviewer extends AbstractFlashcardViewer {
     @Override
     protected SharedPreferences restorePreferences() {
         SharedPreferences preferences = super.restorePreferences();
-        mPrefHideDueCount = preferences.getBoolean("hideDueCount", false);
-        mPrefShowETA = preferences.getBoolean("showETA", true);
+        Prefs prefs = new Prefs(preferences);
+        mPrefHideDueCount = prefs.getBoolean(PreferenceKeys.HideDueCount);
+        mPrefShowETA = prefs.getBoolean(PreferenceKeys.ShowEta);
         this.mProcessor.setup();
-        mPrefFullscreenReview = Integer.parseInt(preferences.getString("fullscreenMode", "0")) > 0;
+        mPrefFullscreenReview = prefs.getIntFromStr(PreferenceKeys.FullscreenMode) > 0;
         mActionButtons.setup(preferences);
         return preferences;
     }
@@ -1105,7 +1097,7 @@ public class Reviewer extends AbstractFlashcardViewer {
         );
         // Show / hide the Action bar together with the status bar
         SharedPreferences prefs = AnkiDroidApp.getSharedPrefs(a);
-        final int fullscreenMode = Integer.parseInt(prefs.getString("fullscreenMode", "0"));
+        final int fullscreenMode = new Prefs(prefs).getIntFromStr(PreferenceKeys.FullscreenMode);
         a.getWindow().setStatusBarColor(Themes.getColorFromAttr(a, R.attr.colorPrimaryDark));
         View decorView = a.getWindow().getDecorView();
         decorView.setOnSystemUiVisibilityChangeListener
@@ -1210,12 +1202,12 @@ public class Reviewer extends AbstractFlashcardViewer {
 
 
     private void disableDrawerSwipeOnConflicts() {
-        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getBaseContext());
-        boolean gesturesEnabled = AnkiDroidApp.initiateGestures(preferences);
+        Prefs prefs = Prefs.fromContext(getBaseContext());
+        boolean gesturesEnabled = AnkiDroidApp.initiateGestures(prefs);
         if (gesturesEnabled) {
-            int gestureSwipeUp = Integer.parseInt(preferences.getString("gestureSwipeUp", "9"));
-            int gestureSwipeDown = Integer.parseInt(preferences.getString("gestureSwipeDown", "0"));
-            int gestureSwipeRight = Integer.parseInt(preferences.getString("gestureSwipeRight", "17"));
+            int gestureSwipeUp = prefs.getIntFromStr(PreferenceKeys.GestureSwipeUp);
+            int gestureSwipeDown = prefs.getIntFromStr(PreferenceKeys.GestureSwipeDown);
+            int gestureSwipeRight = prefs.getIntFromStr(PreferenceKeys.GestureSwipeRight);
             if (gestureSwipeUp != COMMAND_NOTHING ||
                     gestureSwipeDown != COMMAND_NOTHING ||
                     gestureSwipeRight != COMMAND_NOTHING) {
@@ -1312,10 +1304,10 @@ public class Reviewer extends AbstractFlashcardViewer {
         public boolean onMenuItemClick(MenuItem item) {
             int itemId = item.getItemId();
             if (itemId == R.id.action_suspend_card) {
-                dismiss(new CollectionTask.SuspendCard(mCurrentCard));
+                dismiss(DismissType.SUSPEND_CARD);
                 return true;
             } else if (itemId == R.id.action_suspend_note) {
-                dismiss(new CollectionTask.SuspendNote(mCurrentCard));
+                dismiss(DismissType.SUSPEND_NOTE);
                 return true;
             }
             return false;
@@ -1360,10 +1352,10 @@ public class Reviewer extends AbstractFlashcardViewer {
         public boolean onMenuItemClick(MenuItem item) {
             int itemId = item.getItemId();
             if (itemId == R.id.action_bury_card) {
-                dismiss(new CollectionTask.BuryCard(mCurrentCard));
+                dismiss(DismissType.BURY_CARD);
                 return true;
             } else if (itemId == R.id.action_bury_note) {
-                dismiss(new CollectionTask.BuryNote(mCurrentCard));
+                dismiss(DismissType.BURY_NOTE);
                 return true;
             }
             return false;
