@@ -51,7 +51,6 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.MarginLayoutParams;
@@ -67,7 +66,6 @@ import android.widget.TextView;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.ichi2.anki.dialogs.ConfirmationDialog;
-import com.ichi2.anki.dialogs.DeckSelectionDialog;
 import com.ichi2.anki.dialogs.DiscardChangesDialog;
 import com.ichi2.anki.dialogs.IntegerDialog;
 import com.ichi2.anki.dialogs.LocaleSelectionDialog;
@@ -94,7 +92,6 @@ import com.ichi2.async.TaskManager;
 import com.ichi2.compat.CompatHelper;
 import com.ichi2.libanki.Card;
 import com.ichi2.libanki.Collection;
-import com.ichi2.libanki.Decks;
 import com.ichi2.libanki.Models;
 import com.ichi2.libanki.Model;
 import com.ichi2.libanki.Note;
@@ -108,7 +105,6 @@ import com.ichi2.utils.AdaptionUtil;
 import com.ichi2.utils.ContentResolverUtil;
 import com.ichi2.utils.DeckComparator;
 import com.ichi2.utils.FileUtil;
-import com.ichi2.utils.FunctionalInterfaces;
 import com.ichi2.utils.FunctionalInterfaces.Consumer;
 import com.ichi2.utils.KeyUtils;
 import com.ichi2.utils.MapUtil;
@@ -135,7 +131,6 @@ import java.util.Map;
 import java.util.Set;
 
 import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
 import androidx.core.text.HtmlCompat;
 import androidx.fragment.app.DialogFragment;
 import timber.log.Timber;
@@ -153,7 +148,6 @@ import static com.ichi2.libanki.Models.NOT_FOUND_NOTE_TYPE;
  * @see <a href="http://ankisrs.net/docs/manual.html#cards">the Anki Desktop manual</a>
  */
 public class NoteEditor extends AnkiActivity implements
-        DeckSelectionDialog.DeckSelectionListener,
         TagsDialog.TagsDialogListener {
     // DA 2020-04-13 - Refactoring Plans once tested:
     // * There is a difference in functionality depending on whether we are editing
@@ -256,22 +250,6 @@ public class NoteEditor extends AnkiActivity implements
 
     private SaveNoteHandler saveNoteHandler() {
         return new SaveNoteHandler(this);
-    }
-
-
-    @Override
-    public void onDeckSelected(@Nullable DeckSelectionDialog.SelectableDeck deck) {
-        if (deck != null) {
-            mCurrentDid = deck.getDeckId();
-            mNoteDeckSpinner.setSelection(mAllDeckIds.indexOf(deck.getDeckId()), false);
-        }
-    }
-
-    private void displayDeckOverrideDialog(Collection col) {
-        FunctionalInterfaces.Filter<Deck> nonDynamic = (d) -> !Decks.isDynamic(d);
-        List<DeckSelectionDialog.SelectableDeck> decks = DeckSelectionDialog.SelectableDeck.fromCollection(col, nonDynamic);
-        DeckSelectionDialog dialog = DeckSelectionDialog.newInstance(getString(R.string.search_deck), null, false, decks);
-        AnkiActivity.showDialogFragment(NoteEditor.this, dialog);
     }
 
     private enum AddClozeType {
@@ -496,10 +474,6 @@ public class NoteEditor extends AnkiActivity implements
             modifyCurrentSelection(formatter, (FieldEditText) currentFocus);
         });
 
-        // Sets the background and icon color of toolbar respectively.
-        mToolbar.setBackgroundColor(Themes.getColorFromAttr(NoteEditor.this, R.attr.toolbarBackgroundColor));
-        mToolbar.setIconColor(Themes.getColorFromAttr(NoteEditor.this, R.attr.toolbarIconColor));
-
         enableToolbar(mainView);
 
         mFieldsLayoutContainer = findViewById(R.id.CardEditorEditFieldsLayout);
@@ -644,15 +618,19 @@ public class NoteEditor extends AnkiActivity implements
         };
         mNoteDeckSpinner.setAdapter(noteDeckAdapter);
         noteDeckAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mNoteDeckSpinner.setOnTouchListener(new View.OnTouchListener() {
+        mNoteDeckSpinner.setOnItemSelectedListener(new OnItemSelectedListener() {
 
-                public boolean onTouch(View view, MotionEvent motionEvent) {
-                    if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                        displayDeckOverrideDialog(getCol());
-                    }
-                    return true;
-                }
-            });
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                // Timber.i("NoteEditor:: onItemSelected() fired on mNoteDeckSpinner with pos = %d", pos);
+                mCurrentDid = mAllDeckIds.get(pos);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do Nothing
+            }
+        });
 
         mCurrentDid = intent.getLongExtra(EXTRA_DID, mCurrentDid);
         String mGetTextFromSearchView = intent.getStringExtra(EXTRA_TEXT_FROM_SEARCH_VIEW);
@@ -784,7 +762,7 @@ public class NoteEditor extends AnkiActivity implements
             case KeyEvent.KEYCODE_D:
                 //null check in case Spinner is moved into options menu in the future
                 if (event.isCtrlPressed() && (mNoteDeckSpinner != null)) {
-                    displayDeckOverrideDialog(getCol());
+                        mNoteDeckSpinner.performClick();
                 }
                 break;
 
@@ -1060,27 +1038,7 @@ public class NoteEditor extends AnkiActivity implements
      * Change the note type from oldModel to newModel, handling the case where a full sync will be required
      */
     private void changeNoteTypeWithErrorHandling(final Model oldModel, final Model newModel) {
-        Resources res = getResources();
-        try {
-            changeNoteType(oldModel, newModel);
-        } catch (ConfirmModSchemaException e) {
-            e.log();
-            // Libanki has determined we should ask the user to confirm first
-            ConfirmationDialog dialog = new ConfirmationDialog();
-            dialog.setArgs(res.getString(R.string.full_sync_confirmation));
-            Runnable confirm = () -> {
-                // Bypass the check once the user confirms
-                getCol().modSchemaNoCheck();
-                try {
-                    changeNoteType(oldModel, newModel);
-                } catch (ConfirmModSchemaException e2) {
-                    // This should never be reached as we explicitly called modSchemaNoCheck()
-                    throw new RuntimeException(e2);
-                }
-            };
-            dialog.setConfirm(confirm);
-            showDialogFragment(dialog);
-        }
+        executeSchemaModified(() -> changeNoteType(oldModel, newModel));
     }
 
     /**
@@ -1812,7 +1770,7 @@ public class NoteEditor extends AnkiActivity implements
 
         // Sets the background color of disabled EditText.
         if (!enabled) {
-            editText.setBackgroundColor(Themes.getColorFromAttr(NoteEditor.this, R.attr.editTextBackgroundColor));
+            editText.setBackgroundColor(Themes.getColorFromAttr(NoteEditor.this,R.attr.editTextBackgroundColor));
         }
         editText.setEnabled(enabled);
     }
@@ -2026,10 +1984,7 @@ public class NoteEditor extends AnkiActivity implements
         }
 
         // Let the user add more buttons (always at the end).
-        // Sets the add custom tag icon color.
-        final Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.ic_add_toolbar_icon, null);
-        drawable.setTint(Themes.getColorFromAttr(NoteEditor.this, R.attr.toolbarIconColor));
-        mToolbar.insertItem(0, drawable, this::displayAddToolbarDialog);
+        mToolbar.insertItem(0, R.drawable.ic_add_toolbar_icon, this::displayAddToolbarDialog);
     }
 
     @NonNull
