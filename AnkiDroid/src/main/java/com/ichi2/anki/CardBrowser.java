@@ -146,7 +146,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
     private String mSearchTerms;
     private String mRestrictOnDeck;
     private int mCurrentFlag;
-
+    private static final String NIGHT_MODE_PREFERENCE = "invertedColors";
+    private boolean isDarkModeAtStart;
     private MenuItem mSearchItem;
     private MenuItem mSaveSearchItem;
     private MenuItem mMySearchesItem;
@@ -507,6 +508,11 @@ public class CardBrowser extends NavigationDrawerActivity implements
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // Saves the present Night Mode Preference on activity start.
+        isDarkModeAtStart=AnkiDroidApp.getSharedPrefs(getApplicationContext())
+                .getBoolean(NIGHT_MODE_PREFERENCE,false);
+
         if (showedActivityFailedScreen(savedInstanceState)) {
             return;
         }
@@ -820,7 +826,14 @@ public class CardBrowser extends NavigationDrawerActivity implements
     @Override
     protected void onDestroy() {
         Timber.d("onDestroy()");
-        invalidate();
+        if(isDarkModeAtStart == AnkiDroidApp.getSharedPrefs(getApplicationContext())
+                        .getBoolean(NIGHT_MODE_PREFERENCE,false)) {
+
+            // We don't want to invalidate on just theme change.
+            // as it cancels all the running tasks and the card browser is left empty.
+
+            invalidate();
+        }
         super.onDestroy();
         if (mUnmountReceiver != null) {
             unregisterReceiver(mUnmountReceiver);
@@ -1335,7 +1348,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         if (did != null && did > 0) {
             intent.putExtra(NoteEditor.EXTRA_DID, (long) did);
         }
-        intent.putExtra(NoteEditor.EXTRA_TEXT_FROM_SEARCH_VIEW, mSearchTerms);
         return intent;
     }
 
@@ -1500,12 +1512,9 @@ public class CardBrowser extends NavigationDrawerActivity implements
             mSearchItem.expandActionView();
         }
         if (mSearchTerms.contains("deck:")) {
-            searchText = "(" + mSearchTerms + ")";
+            searchText = mSearchTerms;
         } else {
-            if (!"".equals(mSearchTerms))
-                searchText = mRestrictOnDeck + "(" + mSearchTerms + ")";
-            else
-                searchText = mRestrictOnDeck;
+            searchText = mRestrictOnDeck + mSearchTerms;
         }
         if (colIsOpen() && mCardsAdapter!= null) {
             // clear the existing card list
@@ -2891,11 +2900,5 @@ public class CardBrowser extends NavigationDrawerActivity implements
     void replaceSelectionWith(int[] positions) {
         mCheckedCards.clear();
         checkCardsAtPositions(positions);
-    }
-
-    @VisibleForTesting
-    void searchCards(String searchQuery) {
-        mSearchTerms = searchQuery;
-        searchCards();
     }
 }
