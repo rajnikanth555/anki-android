@@ -36,6 +36,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.WindowManager.BadTokenException;
 import android.webkit.URLUtil;
@@ -48,6 +49,7 @@ import com.ichi2.anki.contextmenu.CardBrowserContextMenu;
 import com.ichi2.anki.debug.DatabaseLock;
 import com.ichi2.anki.exception.ConfirmModSchemaException;
 import com.ichi2.anki.exception.StorageAccessException;
+import com.ichi2.anki.reviewer.Binding;
 import com.ichi2.anki.services.BootService;
 import com.ichi2.anki.services.NotificationService;
 import com.ichi2.anki.web.CustomSyncServer;
@@ -197,6 +199,25 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                     mCategory.removePreference(mCheckBoxPref_Vibrate);
                     mCategory.removePreference(mCheckBoxPref_Blink);
                 }
+                try {
+                    // This works on an API 19 emulator
+                    // use icon= once we're past API 21
+                    // ----
+                    // android.content.res.Resources$NotFoundException: File res/drawable/ic_language_black_24dp.xml
+                    // from drawable resource ID #0x7f0800d7. If the resource you are trying to use is a vector
+                    // resource, you may be referencing it in an unsupported way.
+                    // See AppCompatDelegate.setCompatVectorFromResourcesEnabled() for more info.
+                    Drawable languageIcon = VectorDrawableCompat.create(
+                            getResources(),
+                            R.drawable.ic_language_black_24dp,
+                            getTheme());
+
+                    screen.findPreference("language").setIcon(languageIcon);
+                } catch (Exception e) {
+                    Timber.w(e, "Failed to set language icon");
+                }
+
+
                 // Build languages
                 initializeLanguageDialog(screen);
                 break;
@@ -256,11 +277,8 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 });
                 initializeCustomFontsDialog(screen);
                 break;
-            case "com.ichi2.anki.prefs.gestures":
-                listener.addPreferencesFromResource(R.xml.preferences_gestures);
-                screen = listener.getPreferenceScreen();
-                updateGestureCornerTouch(screen);
-
+            case "com.ichi2.anki.prefs.bindings":
+                listener.addPreferencesFromResource(R.xml.preferences_bindings);
                 break;
             case "com.ichi2.anki.prefs.custom_buttons":
                 getSupportActionBar().setTitle(R.string.custom_buttons);
@@ -374,14 +392,15 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                     });
                     screen.addPreference(lockDbPreference);
                 }
-                // Adding change logs in both debug and release builds
-                Timber.i("Adding open changelog");
-                android.preference.Preference changelogPreference = new android.preference.Preference(this);
-                changelogPreference.setTitle(R.string.open_changelog);
-                Intent infoIntent = new Intent(this, Info.class);
-                infoIntent.putExtra(Info.TYPE_EXTRA, Info.TYPE_NEW_VERSION);
-                changelogPreference.setIntent(infoIntent);
-                screen.addPreference(changelogPreference);
+                if (BuildConfig.DEBUG) {
+                    Timber.i("Debug mode, adding show changelog");
+                    android.preference.Preference changelogPreference = new android.preference.Preference(this);
+                    changelogPreference.setTitle("Open Changelog");
+                    Intent infoIntent = new Intent(this, Info.class);
+                    infoIntent.putExtra(Info.TYPE_EXTRA, Info.TYPE_NEW_VERSION);
+                    changelogPreference.setIntent(infoIntent);
+                    screen.addPreference(changelogPreference);
+                }
                 // Force full sync option
                 ConfirmationPreference fullSyncPreference = (ConfirmationPreference)screen.findPreference("force_full_sync");
                 fullSyncPreference.setDialogMessage(R.string.force_full_sync_summary);
@@ -488,7 +507,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 UIUtils.showThemedToast(this, getString(R.string.no_image_selected), false);
             }
         } catch (OutOfMemoryError | Exception e) {
-            Timber.w(e);
             UIUtils.showThemedToast(this, getString(R.string.error_selecting_image, e.getLocalizedMessage()), false);
         }
     }
@@ -503,7 +521,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 Intent openThirdPartyAppsIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(githubThirdPartyAppsUrl));
                 super.startActivity(openThirdPartyAppsIntent);
             } catch (ActivityNotFoundException e) {
-                Timber.w(e);
                 //We use a different message here. We have limited space in the snackbar
                 String error = getString(R.string.activity_start_failed_load_url, githubThirdPartyAppsUrl);
                 UIUtils.showSimpleSnackbar(this, error, false);
@@ -786,9 +803,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 case AnkiCardContextMenu.ANKI_CARD_CONTEXT_MENU_PREF_KEY:
                     AnkiCardContextMenu.ensureConsistentStateWithSharedPreferences(this);
                     break;
-                case "gestureCornerTouch": {
-                    updateGestureCornerTouch(screen);
-                }
             }
             // Update the summary text to reflect new value
             updateSummary(pref);
@@ -798,23 +812,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
             throw new RuntimeException(e);
         }
     }
-
-
-    private void updateGestureCornerTouch(android.preference.PreferenceScreen screen) {
-        boolean gestureCornerTouch = AnkiDroidApp.getSharedPrefs(this).getBoolean("gestureCornerTouch", false);
-        if (gestureCornerTouch) {
-            screen.findPreference("gestureTapTop").setTitle(R.string.gestures_corner_tap_top_center);
-            screen.findPreference("gestureTapLeft").setTitle(R.string.gestures_corner_tap_middle_left);
-            screen.findPreference("gestureTapRight").setTitle(R.string.gestures_corner_tap_middle_right);
-            screen.findPreference("gestureTapBottom").setTitle(R.string.gestures_corner_tap_bottom_center);
-        } else {
-            screen.findPreference("gestureTapTop").setTitle(R.string.gestures_tap_top);
-            screen.findPreference("gestureTapLeft").setTitle(R.string.gestures_tap_left);
-            screen.findPreference("gestureTapRight").setTitle(R.string.gestures_tap_right);
-            screen.findPreference("gestureTapBottom").setTitle(R.string.gestures_tap_bottom);
-        }
-    }
-
 
     public void updateNotificationPreference(android.preference.ListPreference listpref) {
         CharSequence[] entries = listpref.getEntries();
@@ -869,7 +866,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
                 return;
             }
         } catch (NullPointerException e) {
-            Timber.w(e);
             value = "";
         }
         // Get summary text
@@ -901,7 +897,6 @@ public class Preferences extends AppCompatPreferenceActivity implements Preferen
             Double.parseDouble(value);
             return replaceString(str, value);
         } catch (NumberFormatException e){
-            Timber.w(e);
             return value;
         }
     }

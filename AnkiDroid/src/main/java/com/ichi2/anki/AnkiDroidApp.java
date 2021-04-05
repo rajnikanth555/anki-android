@@ -24,8 +24,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.net.Uri;
@@ -35,13 +33,11 @@ import android.os.LocaleList;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.core.content.pm.PackageInfoCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 import android.view.ViewConfiguration;
 import android.webkit.CookieManager;
-import android.webkit.WebView;
 
 import com.ichi2.anki.analytics.AnkiDroidCrashReportDialog;
 import com.ichi2.anki.contextmenu.AnkiCardContextMenu;
@@ -72,14 +68,10 @@ import org.acra.config.ToastConfigurationBuilder;
 import org.acra.sender.HttpSender;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import androidx.webkit.WebViewCompat;
 import timber.log.Timber;
 import static timber.log.Timber.DebugTree;
 
@@ -168,10 +160,8 @@ public class AnkiDroidApp extends Application {
     // Singleton instance of this class.
     private static AnkiDroidApp sInstance;
     // Constants for gestures
-    public static int sSwipeMinDistance = -1;
-    public static int sSwipeThresholdVelocity = -1;
-    private static int DEFAULT_SWIPE_MIN_DISTANCE;
-    private static int DEFAULT_SWIPE_THRESHOLD_VELOCITY;
+    public static int DEFAULT_SWIPE_MIN_DISTANCE;
+    public static int DEFAULT_SWIPE_THRESHOLD_VELOCITY;
 
     /**
      * The latest package version number that included important changes to the database integrity check routine. All
@@ -201,7 +191,7 @@ public class AnkiDroidApp extends Application {
 
 
     public static boolean isInitialized() {
-        return sInstance != null;
+        return sInstance == null;
     }
 
 
@@ -236,8 +226,6 @@ public class AnkiDroidApp extends Application {
     private void setAcraConfigBuilder(CoreConfigurationBuilder acraCoreConfigBuilder) {
         this.acraCoreConfigBuilder = acraCoreConfigBuilder;
         ACRA.init(this, acraCoreConfigBuilder);
-        ACRA.getErrorReporter().putCustomData("WEBVIEW_VER_NAME", fetchWebViewInformation().get("WEBVIEW_VER_NAME"));
-        ACRA.getErrorReporter().putCustomData("WEBVIEW_VER_CODE", fetchWebViewInformation().get("WEBVIEW_VER_CODE"));
     }
 
     @Override
@@ -498,24 +486,6 @@ public class AnkiDroidApp extends Application {
         return newConfig;
     }
 
-
-    public static boolean initiateGestures(SharedPreferences preferences) {
-        boolean enabled = preferences.getBoolean("gestures", false);
-        if (enabled) {
-            int sensitivity = preferences.getInt("swipeSensitivity", 100);
-            if (sensitivity != 100) {
-                float sens = 100.0f/sensitivity;
-                sSwipeMinDistance = (int) (DEFAULT_SWIPE_MIN_DISTANCE * sens + 0.5f);
-                sSwipeThresholdVelocity = (int) (DEFAULT_SWIPE_THRESHOLD_VELOCITY * sens  + 0.5f);
-            } else {
-                sSwipeMinDistance = DEFAULT_SWIPE_MIN_DISTANCE;
-                sSwipeThresholdVelocity = DEFAULT_SWIPE_THRESHOLD_VELOCITY;
-            }
-        }
-        return enabled;
-    }
-
-
     /**
      * Turns ACRA reporting off completely and persists it to shared prefs
      * But expands logcat search in case developer manually re-enables it
@@ -717,22 +687,6 @@ public class AnkiDroidApp extends Application {
                     break;
             }
         }
-    }
-
-    @NonNull
-    private HashMap<String, String> fetchWebViewInformation() {
-        HashMap<String, String> webViewInfo = new HashMap<>();
-        webViewInfo.put("WEBVIEW_VER_NAME", "");
-        webViewInfo.put("WEBVIEW_VER_CODE", "");
-        try {
-            PackageManager packageManager = getPackageManager();
-            PackageInfo pi = WebViewCompat.getCurrentWebViewPackage(this);
-            webViewInfo.put("WEBVIEW_VER_NAME", pi.versionName);
-            webViewInfo.put("WEBVIEW_VER_CODE", String.valueOf(PackageInfoCompat.getLongVersionCode(pi)));
-        } catch (Throwable e) {
-            Timber.w(e);
-        }
-        return webViewInfo;
     }
 
 }

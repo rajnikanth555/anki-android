@@ -38,41 +38,15 @@ public class StringUtil {
         return newLength < s.length() ? s.substring(0, newLength) : s;
     }
 
-
-    /**
-     * Remove all whitespace from the start and the end of a {@link String}.
-     *
-     * A whitespace is defined by {@link Character#isWhitespace(char)}
-     *
-     * @param string the string to be stripped, may be null
-     * @return the stripped string
-     */
-    @Nullable
-    @Contract("null -> null; !null -> !null")
-    public static String strip(@Nullable String string) {
-        if (string == null || string.length() == 0) {
-            return string;
+    public static String capitalize(@Nullable String s) {
+        if (s == null) {
+            return null;
         }
 
-        int start = 0;
-        while (start < string.length() && Character.isWhitespace(string.charAt(start))) {
-            start++;
+        if (s.length() > 0) {
+            s = s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
         }
 
-        if (start == string.length()) {
-            return "";
-        }
-
-        int end = string.length();
-        while (end > start && Character.isWhitespace(string.charAt(end - 1))) {
-            end--;
-        }
-
-        if (start == 0 && end == string.length()) {
-            return string;
-        }
-
-        return string.substring(start, end);
+        return s;
     }
-
 }
