@@ -24,15 +24,20 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.TextView;
 
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.ichi2.anki.AnkiActivity;
 import com.ichi2.anki.R;
+import com.ichi2.anki.UIUtils;
 import com.ichi2.anki.analytics.AnalyticsDialogFragment;
+import com.ichi2.anki.exception.FilteredAncestor;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Deck;
+import com.ichi2.libanki.Decks;
 import com.ichi2.utils.FunctionalInterfaces;
 import com.ichi2.utils.FilterResultsUtils;
 
@@ -53,7 +58,7 @@ import androidx.recyclerview.widget.RecyclerView;
 public class DeckSelectionDialog extends AnalyticsDialogFragment {
 
     private MaterialDialog mDialog;
-
+    private DecksArrayAdapter mAdapter;
 
     /**
      * A dialog which handles selecting a deck
@@ -107,10 +112,10 @@ public class DeckSelectionDialog extends AnalyticsDialogFragment {
         recyclerView.addItemDecoration(dividerItemDecoration);
 
         List<SelectableDeck> decks = getDeckNames(arguments);
-        DecksArrayAdapter adapter = new DecksArrayAdapter(decks);
-        recyclerView.setAdapter(adapter);
+        mAdapter = new DecksArrayAdapter(decks);
+        recyclerView.setAdapter(mAdapter);
 
-        adjustToolbar(dialogView, adapter);
+        adjustToolbar(dialogView, mAdapter);
 
         MaterialDialog.Builder builder = new MaterialDialog.Builder(requireActivity())
                 .neutralText(R.string.dialog_cancel)
@@ -167,8 +172,43 @@ public class DeckSelectionDialog extends AnalyticsDialogFragment {
                 return true;
             }
         });
+
+        MenuItem addDecks = mToolbar.getMenu().findItem(R.id.deck_picker_dialog_action_add_deck);
+        addDecks.setOnMenuItemClickListener(menuItem -> {
+            // creating new deck without any parent deck
+            addDeckDialog("");
+            return true;
+        });
     }
 
+    private void addDeckDialog(String parentDeckPath) {
+        int dialogTitle = parentDeckPath.isEmpty() ? R.string.new_deck : R.string.create_subdeck;
+        CreateDeckDialog createDeckDialog = new CreateDeckDialog(requireActivity(), dialogTitle);
+        createDeckDialog.createDeck();
+        createDeckDialog.mBuilder.onPositive((dialog, which) -> {
+            String deckNameWithParentName = parentDeckPath + createDeckDialog.getDeckName();
+            boolean success = createDeckDialog.onNewDeckCreated(deckNameWithParentName);
+            if (success) {
+                selectDeckWithDeckName(deckNameWithParentName);
+            }
+            createDeckDialog.onCancelled();
+        });
+    }
+
+    @NonNull
+    protected AnkiActivity requireAnkiActivity() {
+        return (AnkiActivity) requireActivity();
+    }
+
+    private void selectDeckWithDeckName(@NonNull String deckName) {
+        try {
+            Long id = requireAnkiActivity().getCol().getDecks().id(deckName);
+            SelectableDeck dec = new SelectableDeck(id, deckName);
+            selectDeckAndClose(dec);
+        } catch (FilteredAncestor filteredAncestor) {
+            UIUtils.showThemedToast(requireActivity(), getString(R.string.decks_rename_filtered_nosubdecks), false);
+        }
+    }
 
     protected void onDeckSelected(@Nullable SelectableDeck deck) {
         ((DeckSelectionListener) requireActivity()).onDeckSelected(deck);
@@ -193,6 +233,15 @@ public class DeckSelectionDialog extends AnalyticsDialogFragment {
                 mDeckTextView.setOnClickListener(view -> {
                     String deckName = ctv.getText().toString();
                     selectDeckByNameAndClose(deckName);
+                });
+
+                mDeckTextView.setOnLongClickListener(new View.OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View view) {
+                        // creating sub deck with parent deck path
+                        addDeckDialog(ctv.getText().toString() + Decks.DECK_SEPARATOR);
+                        return true;
+                    }
                 });
             }
 
