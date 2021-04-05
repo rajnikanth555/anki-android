@@ -81,6 +81,7 @@ import android.webkit.WebView.HitTestResult;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -120,7 +121,6 @@ import com.ichi2.libanki.template.MathJax;
 import com.ichi2.libanki.template.TemplateFilters;
 import com.ichi2.themes.HtmlColors;
 import com.ichi2.themes.Themes;
-import com.ichi2.ui.FixedEditText;
 import com.ichi2.utils.AdaptionUtil;
 import com.ichi2.utils.AndroidUiUtils;
 import com.ichi2.utils.AssetHelper;
@@ -148,7 +148,7 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -167,7 +167,7 @@ import com.github.zafarkhaja.semver.Version;
 import static com.ichi2.anim.ActivityTransitionAnimation.Direction.*;
 
 @SuppressWarnings({"PMD.AvoidThrowingRawExceptionTypes","PMD.FieldDeclarationsShouldBeAtStartOfClass"})
-public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity implements ReviewerUi, CommandProcessor, TagsDialog.TagsDialogListener {
+public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity implements ReviewerUi, CommandProcessor {
 
     /**
      * Result codes that are returned when this activity finishes.
@@ -288,7 +288,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
     protected TextView mNext2;
     protected TextView mNext3;
     protected TextView mNext4;
-    protected FixedEditText mAnswerField;
+    protected EditText mAnswerField;
     protected TextView mEase1;
     protected TextView mEase2;
     protected TextView mEase3;
@@ -313,6 +313,9 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
     private boolean mButtonHeightSet = false;
 
+    // to check whether media is playing or not
+    private boolean isMediaPlaying = false;
+
     private static final int sShowChosenAnswerLength = 2000;
 
     /**
@@ -325,7 +328,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
     /**
      * Swipe Detection
      */
-    private GestureDetector mGestureDetector;
+    private GestureDetector gestureDetector;
     private MyGestureDetector mGestureDetectorImpl;
     private boolean mLinkOverridesTouchGesture;
 
@@ -368,7 +371,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
      * If we get 2 crashes on the same card, then we likely have an infinite loop and want to exit gracefully.
      */
     @Nullable
-    private Long mLastCrashingCardId = null;
+    private Long lastCrashingCardId = null;
 
     /** Reference to the parent of the cardFrame to allow regeneration of the cardFrame in case of crash */
     private ViewGroup mCardFrameParent;
@@ -389,17 +392,8 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
     // LISTENERS
     // ----------------------------------------------------------------------------
 
-    private final Handler mHandler = new Handler() {
-
-        @Override
-        public void handleMessage(Message msg) {
-            mSoundPlayer.stopSounds();
-            mSoundPlayer.playSound((String) msg.obj, null, null, getSoundErrorListener());
-        }
-    };
-
-    private final Handler mLongClickHandler = new Handler();
-    private final Runnable mLongClickTestRunnable = new Runnable() {
+    private final Handler longClickHandler = new Handler();
+    private final Runnable longClickTestRunnable = new Runnable() {
         @Override
         public void run() {
             Timber.i("AbstractFlashcardViewer:: onEmulatedLongClick");
@@ -409,10 +403,10 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
                 UIUtils.showThemedToast(AbstractFlashcardViewer.this, lookupHint, false);
             }
             CompatHelper.getCompat().vibrate(AnkiDroidApp.getInstance().getApplicationContext(), 50);
-            mLongClickHandler.postDelayed(mStartLongClickAction, 300);
+            longClickHandler.postDelayed(startLongClickAction, 300);
         }
     };
-    private final Runnable mStartLongClickAction = new Runnable() {
+    private final Runnable startLongClickAction = new Runnable() {
         @Override
         public void run() {
             executeCommand(mGestureLongclick);
@@ -466,24 +460,24 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
     private final View.OnTouchListener mGestureListener = new View.OnTouchListener() {
         @Override
         public boolean onTouch(View v, MotionEvent event) {
-            if (mGestureDetector.onTouchEvent(event)) {
+            if (gestureDetector.onTouchEvent(event)) {
                 return true;
             }
             if (!mDisableClipboard) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         mTouchStarted = true;
-                        mLongClickHandler.postDelayed(mLongClickTestRunnable, 800);
+                        longClickHandler.postDelayed(longClickTestRunnable, 800);
                         break;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_MOVE:
                         if (mTouchStarted) {
-                            mLongClickHandler.removeCallbacks(mLongClickTestRunnable);
+                            longClickHandler.removeCallbacks(longClickTestRunnable);
                             mTouchStarted = false;
                         }
                         break;
                     default:
-                        mLongClickHandler.removeCallbacks(mLongClickTestRunnable);
+                        longClickHandler.removeCallbacks(longClickTestRunnable);
                         mTouchStarted = false;
                         break;
                 }
@@ -822,16 +816,16 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
      *
      * @param txt The field text with the clozes
      * @param idx The index of the cloze to use
-     * @return If the cloze strings are the same, return a single cloze string, otherwise, return
-     *         a string with a comma-separeted list of strings with the correct index.
+     * @return A string with a comma-separeted list of unique cloze strings with the correct index.
      */
-    @VisibleForTesting
-    protected String contentForCloze(String txt, int idx) {
+
+    private String contentForCloze(String txt, int idx) {
         @SuppressWarnings("RegExpRedundantEscape") // In Android, } should be escaped
         Pattern re = Pattern.compile("\\{\\{c" + idx + "::(.+?)\\}\\}");
         Matcher m = re.matcher(txt);
-        List<String> matches = new ArrayList<>();
-
+        Set<String> matches = new LinkedHashSet<>(); // Size can't be known in advance
+        // LinkedHashSet: make entries appear only once, like Anki desktop (see also issue #2208), and keep the order
+        // they appear in.
         String groupOne;
         int colonColonIndex = -1;
         while (m.find()) {
@@ -843,20 +837,20 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
             }
             matches.add(groupOne);
         }
-
-        Set<String> uniqMatches = new HashSet<>(matches); // Allow to check whether there are distinct strings
-
-        // Make it consistent with the Desktop version (see issue #8229)
-        if (uniqMatches.size() == 1) {
-            return matches.get(0);
-        } else {
-            return TextUtils.join(", ", matches);
+        // Now do what the pythonic ", ".join(matches) does in a tricky way
+        String prefix = "";
+        StringBuilder resultBuilder = new StringBuilder();
+        for (String match : matches) {
+            resultBuilder.append(prefix);
+            resultBuilder.append(match);
+            prefix = ", ";
         }
+        return resultBuilder.toString();
     }
 
     private final Handler mTimerHandler = new Handler();
 
-    private final Runnable mRemoveChosenAnswerText = new Runnable() {
+    private final Runnable removeChosenAnswerText = new Runnable() {
         @Override
         public void run() {
             mChosenAnswer.setText("");
@@ -889,7 +883,6 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
         View mainView = findViewById(android.R.id.content);
         initNavigationDrawer(mainView);
-
         mShortAnimDuration = getResources().getInteger(android.R.integer.config_shortAnimTime);
     }
 
@@ -985,8 +978,8 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
         mTimeoutHandler.removeCallbacks(mShowAnswerTask);
         mTimeoutHandler.removeCallbacks(mShowQuestionTask);
-        mLongClickHandler.removeCallbacks(mLongClickTestRunnable);
-        mLongClickHandler.removeCallbacks(mStartLongClickAction);
+        longClickHandler.removeCallbacks(longClickTestRunnable);
+        longClickHandler.removeCallbacks(startLongClickAction);
 
         pauseTimer();
         mSoundPlayer.stopSounds();
@@ -1251,7 +1244,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
 
     public GestureDetector getGestureDetector() {
-        return mGestureDetector;
+        return gestureDetector;
     }
 
 
@@ -1386,7 +1379,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
                 .onPositive((dialog, which) -> {
                     Timber.i("AbstractFlashcardViewer:: OK button pressed to delete note %d", mCurrentCard.getNid());
                     mSoundPlayer.stopSounds();
-                    dismiss(new CollectionTask.DeleteNote(mCurrentCard));
+                    dismiss(Collection.DismissType.DELETE_NOTE);
                 })
                 .build().show();
     }
@@ -1451,8 +1444,8 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
         }
 
         // remove chosen answer hint after a while
-        mTimerHandler.removeCallbacks(mRemoveChosenAnswerText);
-        mTimerHandler.postDelayed(mRemoveChosenAnswerText, sShowChosenAnswerLength);
+        mTimerHandler.removeCallbacks(removeChosenAnswerText);
+        mTimerHandler.postDelayed(removeChosenAnswerText, sShowChosenAnswerLength);
         mSoundPlayer.stopSounds();
         mCurrentEase = ease;
 
@@ -1507,7 +1500,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
         // Initialize swipe
         mGestureDetectorImpl = mLinkOverridesTouchGesture ? new LinkDetectingGestureDetector() : new MyGestureDetector();
-        mGestureDetector = new GestureDetector(this, mGestureDetectorImpl);
+        gestureDetector = new GestureDetector(this, mGestureDetectorImpl);
 
         mEaseButtonsLayout = findViewById(R.id.ease_buttons);
 
@@ -1649,7 +1642,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
 
     private boolean webViewRendererLastCrashedOnCard(long cardId) {
-        return mLastCrashingCardId != null && mLastCrashingCardId == cardId;
+        return lastCrashingCardId != null && lastCrashingCardId == cardId;
     }
 
 
@@ -1758,7 +1751,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
         // This does not handle mUseInputTag (the WebView contains an input field with a typable answer).
         // In this case, the user can use touch to focus the field if necessary.
         if (typeAnswer()) {
-            mAnswerField.focusWithKeyboard();
+            mAnswerField.requestFocus();
         } else {
             mFlipCardLayout.requestFocus();
         }
@@ -1876,7 +1869,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
         recreateWebView();
     }
 
-    protected void recreateWebView() {
+    private void recreateWebView() {
         if (mCardWebView == null) {
             mCardWebView = createWebView();
             WebViewDebugging.initializeDebugging(AnkiDroidApp.getSharedPrefs(this));
@@ -2316,6 +2309,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
     }
 
     private void playSounds(SoundSide questionAndAnswer) {
+        isMediaPlaying = true;
         mSoundPlayer.playSounds(questionAndAnswer, getSoundErrorListener());
     }
 
@@ -2634,16 +2628,16 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
                 lookUpOrSelectText();
                 return true;
             case COMMAND_BURY_CARD:
-                dismiss(new CollectionTask.BuryCard(mCurrentCard));
+                dismiss(Collection.DismissType.BURY_CARD);
                 return true;
             case COMMAND_BURY_NOTE:
-                dismiss(new CollectionTask.BuryNote(mCurrentCard));
+                dismiss(Collection.DismissType.BURY_NOTE);
                 return true;
             case COMMAND_SUSPEND_CARD:
-                dismiss(new CollectionTask.SuspendCard(mCurrentCard));
+                dismiss(Collection.DismissType.SUSPEND_CARD);
                 return true;
             case COMMAND_SUSPEND_NOTE:
-                dismiss(new CollectionTask.SuspendNote(mCurrentCard));
+                dismiss(Collection.DismissType.SUSPEND_NOTE);
                 return true;
             case COMMAND_DELETE:
                 showDeleteNoteDialog();
@@ -2855,9 +2849,9 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
         mTimeoutHandler.removeCallbacks(mShowAnswerTask);
         mTimeoutHandler.removeCallbacks(mShowQuestionTask);
-        mTimerHandler.removeCallbacks(mRemoveChosenAnswerText);
-        mLongClickHandler.removeCallbacks(mLongClickTestRunnable);
-        mLongClickHandler.removeCallbacks(mStartLongClickAction);
+        mTimerHandler.removeCallbacks(removeChosenAnswerText);
+        longClickHandler.removeCallbacks(longClickTestRunnable);
+        longClickHandler.removeCallbacks(startLongClickAction);
 
         AbstractFlashcardViewer.this.setResult(result);
 
@@ -2895,12 +2889,12 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
             super.onScrollChanged(horiz, vert, oldHoriz, oldVert);
             if (Math.abs(horiz - oldHoriz) > Math.abs(vert - oldVert)) {
                 mIsXScrolling = true;
-                mScrollHandler.removeCallbacks(mScrollXRunnable);
-                mScrollHandler.postDelayed(mScrollXRunnable, 300);
+                scrollHandler.removeCallbacks(scrollXRunnable);
+                scrollHandler.postDelayed(scrollXRunnable, 300);
             } else {
                 mIsYScrolling = true;
-                mScrollHandler.removeCallbacks(mScrollYRunnable);
-                mScrollHandler.postDelayed(mScrollYRunnable, 300);
+                scrollHandler.removeCallbacks(scrollYRunnable);
+                scrollHandler.postDelayed(scrollYRunnable, 300);
             }
         }
 
@@ -2941,9 +2935,9 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
             return null;
         }
 
-        private final Handler mScrollHandler = new Handler();
-        private final Runnable mScrollXRunnable = () -> mIsXScrolling = false;
-        private final Runnable mScrollYRunnable = () -> mIsYScrolling = false;
+        private final Handler scrollHandler = new Handler();
+        private final Runnable scrollXRunnable = () -> mIsXScrolling = false;
+        private final Runnable scrollYRunnable = () -> mIsYScrolling = false;
 
     }
 
@@ -3026,7 +3020,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
             if (mTouchStarted) {
-                mLongClickHandler.removeCallbacks(mLongClickTestRunnable);
+                longClickHandler.removeCallbacks(longClickTestRunnable);
                 mTouchStarted = false;
             }
             return false;
@@ -3276,9 +3270,9 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
             } */
     }
 
-    protected void dismiss(CollectionTask.DismissNote dismiss) {
+    protected void dismiss(Collection.DismissType type) {
         blockControls(false);
-        TaskManager.launchCollectionTask(dismiss, mDismissCardHandler);
+        TaskManager.launchCollectionTask(new CollectionTask.DismissNote(mCurrentCard, type), mDismissCardHandler);
     }
 
     /** Signals from a WebView represent actions with no parameters */
@@ -3426,10 +3420,17 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
         // We play sounds through these links when a user taps the sound icon.
         private boolean filterUrl(String url) {
             if (url.startsWith("playsound:")) {
-                // Send a message that will be handled on the UI thread.
-                Message msg = Message.obtain();
-                msg.obj = url.replaceFirst("playsound:", "");
-                mHandler.sendMessage(msg);
+                String playButton = "<svg viewBox=\"0 0 32 32\"><polygon points=\"11,25 25,16 11,7\"/>Play</svg>";
+                String pauseButton = "<svg viewBox=\"0 0 32 32\"><path d=\"M6,19h4L10,5L6,5v14zM14,5v14h4L18,5h-4z\"/>Pause</svg>";
+                if (isMediaPlaying) {
+                    isMediaPlaying = false;
+                    mCardWebView.evaluateJavascript("var x=document.getElementsByTagName(\"span\");x[0].innerHTML='" + playButton + "';", null);
+                    mSoundPlayer.pauseSound();
+                } else {
+                    isMediaPlaying = true;
+                    mSoundPlayer.resumeSound();
+                    mCardWebView.evaluateJavascript("var x=document.getElementsByTagName(\"span\");x[0].innerHTML='" + pauseButton + "';", null);
+                }
                 return true;
             }
             if (url.startsWith("file") || url.startsWith("data:")) {
@@ -3699,7 +3700,7 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
 
                 // If we get here, the error is non-fatal and we should re-render the WebView
                 // This logic may need to be better defined. The card could have changed by the time we get here.
-                mLastCrashingCardId = mCurrentCard.getId();
+                lastCrashingCardId = mCurrentCard.getId();
 
 
                 String nonFatalError = getResources().getString(R.string.webview_crash_nonfatal, errorCauseString);
@@ -3876,20 +3877,19 @@ public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity i
     protected void showTagsDialog() {
         ArrayList<String> tags = new ArrayList<>(getCol().getTags().all());
         ArrayList<String> selTags = new ArrayList<>(mCurrentCard.note().getTags());
+        TagsDialog.TagsDialogListener tagsDialogListener = (selectedTags, option) -> {
+            if (!mCurrentCard.note().getTags().equals(selectedTags)) {
+                String tagString = TextUtils.join(" ", selectedTags);
+                Note note = mCurrentCard.note();
+                note.setTagsFromStr(tagString);
+                note.flush();
+                // Reload current card to reflect tag changes
+                displayCardQuestion(true);
+            }
+        };
         TagsDialog dialog = TagsDialog.newInstance(TagsDialog.DialogType.ADD_TAG, selTags, tags);
+        dialog.setTagsDialogListener(tagsDialogListener);
         showDialogFragment(dialog);
-    }
-
-    @Override
-    public void onSelectedTags(List<String> selectedTags, int option) {
-        if (!mCurrentCard.note().getTags().equals(selectedTags)) {
-            String tagString = TextUtils.join(" ", selectedTags);
-            Note note = mCurrentCard.note();
-            note.setTagsFromStr(tagString);
-            note.flush();
-            // Reload current card to reflect tag changes
-            displayCardQuestion(true);
-        }
     }
 
     // init or reset api list
