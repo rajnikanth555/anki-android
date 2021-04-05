@@ -50,6 +50,7 @@ public class RecursivePictureMenuTest extends RobolectricTest {
 
     @Test
     public void testNormalStartupSelectingItem() {
+        runTasksInBackground();
         Item linkedItem = getItemLinkingTo(R.string.link_anki);
 
         RecyclerView v = getRecyclerViewFor(linkedItem);
@@ -61,6 +62,7 @@ public class RecursivePictureMenuTest extends RobolectricTest {
 
     @Test
     public void testSelectingHeader() {
+        runTasksInBackground();
         int numberOfChildItems = 2;
         Item header = getHeaderWithSubItems(numberOfChildItems);
         RecyclerView v = getRecyclerViewFor(header);
@@ -119,7 +121,6 @@ public class RecursivePictureMenuTest extends RobolectricTest {
 
 
     protected void clickChildAtIndex(RecyclerView v, @SuppressWarnings("SameParameterValue") int index) {
-        advanceRobolectricLooperWithSleep();
         View childAt = v.getChildAt(index); // This is null without appropriate looper calls
         childAt.performClick();
     }

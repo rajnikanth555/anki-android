@@ -35,12 +35,14 @@ public class HelpDialogTest extends RobolectricTest {
 
     @Test
     public void testMenuDoesNotCrash() {
+        runTasksInBackground();
         RecursivePictureMenu dialog = (RecursivePictureMenu) HelpDialog.createInstance(getTargetContext());
 
         super.openDialogFragmentUsingActivity(dialog);
 
         RecyclerView v = RecursivePictureMenuUtil.getRecyclerViewFor(dialog);
 
+        advanceRobolectricLooperWithSleep();
         assertThat(v.getChildCount(), is(4));
     }
 }

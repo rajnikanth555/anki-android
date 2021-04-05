@@ -66,7 +66,6 @@ import java.util.ArrayList;
 
 import androidx.annotation.CheckResult;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.ichi2.utils.InMemorySQLiteOpenHelperFactory;
 
@@ -97,6 +96,8 @@ public class RobolectricTest implements CollectionGetter {
 
     @Before
     public void setUp() {
+
+        runTasksInForeground();
 
         RustBackendLoader.init();
 
@@ -239,9 +240,7 @@ public class RobolectricTest implements CollectionGetter {
         if (!mBackground) {
             return;
         }
-        advanceRobolectricLooper();
         try { Thread.sleep(500); } catch (Exception e) { Timber.e(e); }
-        advanceRobolectricLooper();
     }
 
     /** This can probably be implemented in a better manner */
@@ -309,8 +308,6 @@ public class RobolectricTest implements CollectionGetter {
     protected static <T extends AnkiActivity> T startActivityNormallyOpenCollectionWithIntent(RobolectricTest testClass, Class<T> clazz, Intent i) {
         ActivityController<T> controller = Robolectric.buildActivity(clazz, i)
                 .create().start().resume().visible();
-        advanceRobolectricLooperWithSleep();
-        advanceRobolectricLooperWithSleep();
         testClass.saveControllerForCleanup(controller);
         return controller.get();
     }
@@ -437,10 +434,8 @@ public class RobolectricTest implements CollectionGetter {
             }
         };
         TaskManager.launchCollectionTask(task, listener);
-        advanceRobolectricLooper();
 
         wait(timeoutMs);
-        advanceRobolectricLooper();
 
         if (!completed[0]) {
             throw new IllegalStateException(String.format("Task %s didn't finish in %d ms", task.getClass(), timeoutMs));
@@ -464,7 +459,6 @@ public class RobolectricTest implements CollectionGetter {
      * @see org.junit.matchers.JUnitMatchers
      */
     public <T> void assumeThat(T actual, Matcher<T> matcher) {
-        advanceRobolectricLooperWithSleep();
         Assume.assumeThat(actual, matcher);
     }
 
@@ -486,7 +480,6 @@ public class RobolectricTest implements CollectionGetter {
      * @see org.junit.matchers.JUnitMatchers
      */
     public <T> void assumeThat(String message, T actual, Matcher<T> matcher) {
-        advanceRobolectricLooperWithSleep();
         Assume.assumeThat(message, actual, matcher);
     }
 
@@ -500,7 +493,6 @@ public class RobolectricTest implements CollectionGetter {
      * @param message A message to pass to {@link AssumptionViolatedException}.
      */
     public void assumeTrue(String message, boolean b) {
-        advanceRobolectricLooperWithSleep();
         Assume.assumeTrue(message, b);
     }
 
@@ -523,7 +515,6 @@ public class RobolectricTest implements CollectionGetter {
 
     protected Card getCard() {
         Card card = getCol().getSched().getCard();
-        advanceRobolectricLooperWithSleep();
         return card;
     }
 

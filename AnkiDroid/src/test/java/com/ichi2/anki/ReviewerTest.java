@@ -84,6 +84,7 @@ public class ReviewerTest extends RobolectricTest {
 
     @Test
     public void verifyNormalStartup() {
+        runTasksInBackground();
         try (ActivityScenario<Reviewer> scenario = ActivityScenario.launch(Reviewer.class)) {
             scenario.onActivity(reviewer -> assertNotNull("Collection should be non-null", reviewer.getCol()));
         }
@@ -91,6 +92,7 @@ public class ReviewerTest extends RobolectricTest {
 
     @Test
     public void exitCommandWorksAfterControlsAreBlocked() {
+        runTasksInBackground();
         ensureCollectionLoadIsSynchronous();
         try (ActivityScenario<Reviewer> scenario = ActivityScenario.launch(Reviewer.class)) {
             scenario.onActivity(reviewer -> {
@@ -225,7 +227,6 @@ public class ReviewerTest extends RobolectricTest {
         equalFirstField(cards[2], reviewer.mCurrentCard);
         time.addM(2);
         reviewer.answerCard(getCol().getSched().getGoodNewButton());
-        advanceRobolectricLooperWithSleep();
         equalFirstField(cards[0], reviewer.mCurrentCard); // This failed in #6898 because this card was not in the queue
     }
 
@@ -250,8 +251,6 @@ public class ReviewerTest extends RobolectricTest {
         reviewer.toggleWhiteboard();
 
         assumeTrue("Whiteboard should now be enabled", reviewer.mPrefWhiteboard);
-
-        advanceRobolectricLooperWithSleep();
     }
 
 

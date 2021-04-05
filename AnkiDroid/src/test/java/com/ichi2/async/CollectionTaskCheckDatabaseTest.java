@@ -30,6 +30,7 @@ public class CollectionTaskCheckDatabaseTest extends AbstractCollectionTaskTest 
 
     @Test
     public void checkDatabaseWithLockedCollectionReturnsLocked() {
+        runTasksInBackground();
         lockDatabase();
 
         advanceRobolectricLooper();

@@ -138,12 +138,10 @@ public class ReviewerNoParamTest extends RobolectricTest {
         ReviewerExt reviewer = startReviewerFullScreen();
 
         reviewer.displayCardAnswer();
-        advanceRobolectricLooperWithSleep();
 
         int hideCount = reviewer.getDelayedHideCount();
 
         reviewer.answerCard(1);
-        advanceRobolectricLooperWithSleep();
 
         assertThat("Hide should be called after answering a card", reviewer.getDelayedHideCount(), greaterThan(hideCount));
     }
@@ -154,14 +152,11 @@ public class ReviewerNoParamTest extends RobolectricTest {
         ReviewerExt reviewer = startReviewerFullScreen();
 
         reviewer.displayCardAnswer();
-        advanceRobolectricLooperWithSleep();
         reviewer.answerCard(1);
-        advanceRobolectricLooperWithSleep();
 
         int hideCount = reviewer.getDelayedHideCount();
 
         reviewer.executeCommand(ViewerCommand.COMMAND_UNDO);
-        advanceRobolectricLooperWithSleep();
 
 
         assertThat("Hide should be called after answering a card", reviewer.getDelayedHideCount(), greaterThan(hideCount));
