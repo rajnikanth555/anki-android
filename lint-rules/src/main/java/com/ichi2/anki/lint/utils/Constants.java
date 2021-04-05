@@ -43,4 +43,20 @@ public class Constants {
      */
     public static final Severity ANKI_CROWDIN_SEVERITY = Severity.FATAL;
 
+    /**
+     * The priority for the Lint issues used by all rules related to the restrictions introduced by onPrepareOptionsMenu.
+     */
+    public static final int ANKI_OPTIONS_MENU_PRIORITY = 10;
+
+    /**
+     * A special {@link Category} which groups the Lint issues related to the usage of onPrepareOptionsMenu as a
+     * sub category for {@link Category#CORRECTNESS}.
+     */
+    public static final Category ANKI_OPTIONS_MENU_CATEGORY = create(Category.CORRECTNESS, "AnkionPrepareOptionsMenu", ANKI_OPTIONS_MENU_PRIORITY);
+
+    /**
+     * The severity for the Lint issues used by all rules related to onPrepareOptionsMenu.
+     */
+    public static final Severity ANKI_OPTIONS_MENU_SEVERITY = Severity.FATAL;
+
 }
