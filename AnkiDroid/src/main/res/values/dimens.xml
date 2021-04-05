@@ -6,6 +6,7 @@
     <dimen name="default_width">56dp</dimen>
     <dimen name="keyline_1">16dp</dimen>
     <dimen name="study_options_padding">8dp</dimen>
+    <dimen name="toolbar_item_padding">8dp</dimen>
 
     <!-- Top margin for action bar subtitles -->
     <dimen name="action_bar_subtitle_top_margin">-3dp</dimen>
@@ -27,5 +28,4 @@
     <dimen name="deck_picker_left_padding_small">0dp</dimen>
     <dimen name="deck_picker_left_padding">24dp</dimen>
     <dimen name="deck_picker_right_padding">4dp</dimen>
-    <dimen name="note_editor_toolbar_height">28dp</dimen>
 </resources>
