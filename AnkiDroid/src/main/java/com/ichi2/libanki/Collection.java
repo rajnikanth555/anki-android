@@ -118,7 +118,7 @@ public class Collection {
     private String mPath;
     private boolean mDebugLog;
     private PrintWriter mLogHnd;
-
+    private PrintWriter mLogHnd1;
     private static final Pattern fClozePatternQ = Pattern.compile("\\{\\{(?!type:)(.*?)cloze:");
     private static final Pattern fClozePatternA = Pattern.compile("\\{\\{(.*?)cloze:");
     private static final Pattern fClozeTagStart = Pattern.compile("<%cloze:");
