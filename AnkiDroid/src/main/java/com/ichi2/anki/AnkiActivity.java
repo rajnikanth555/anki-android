@@ -63,7 +63,7 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
     public static final int REQUEST_REVIEW = 901;
     /** The name of the parent class (Reviewer) */
     private final String mActivityName;
-
+private final String mActivityName1;
     private final DialogHandler mHandler = new DialogHandler(this);
 
     // custom tabs
