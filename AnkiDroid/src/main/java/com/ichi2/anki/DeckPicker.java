@@ -169,7 +169,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
      */
     public static final int RESULT_MEDIA_EJECTED = 202;
     public static final int RESULT_DB_ERROR = 203;
-
+public static final int RESULT_DB_ERROR1 = 203;
     protected static final String UPGRADE_VERSION_KEY = "lastUpgradeVersion";
 
     /**
