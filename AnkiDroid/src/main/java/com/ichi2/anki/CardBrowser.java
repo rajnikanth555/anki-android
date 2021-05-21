@@ -152,7 +152,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
     private MenuItem mSaveSearchItem;
     private MenuItem mMySearchesItem;
     private MenuItem mPreviewItem;
-
+ private int mOrder1;
     private Snackbar mUndoSnackbar;
 
     public static Card sCardBrowserCard;
