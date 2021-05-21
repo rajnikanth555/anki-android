@@ -74,6 +74,7 @@ public class DeckAdapter<T extends AbstractDeckTreeNode<T>> extends RecyclerView
     private final int mDeckNameDynColor;
     private final Drawable mExpandImage;
     private final Drawable mCollapseImage;
+     private final Drawable mCollapseImage1;
     private final Drawable mNoExpander = new ColorDrawable(Color.TRANSPARENT);
 
     // Listeners
