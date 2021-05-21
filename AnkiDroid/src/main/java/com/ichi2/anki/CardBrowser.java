@@ -174,7 +174,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
     private static final int ADD_NOTE = 1;
     private static final int PREVIEW_CARDS = 2;
     int a;
-
+private static final int PREVIEW_CARDS1 = 2;
     private static final int DEFAULT_FONT_SIZE_RATIO = 100;
     // Should match order of R.array.card_browser_order_labels
     public static final int CARD_ORDER_NONE = 0;
