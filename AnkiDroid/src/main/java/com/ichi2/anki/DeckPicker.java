@@ -190,7 +190,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
     // Short animation duration from system
     private int mShortAnimDuration;
-
+private int mShortAnimDuration1;
     private boolean mBackButtonPressedToExit = false;
 
     private RelativeLayout mDeckPickerContent;
