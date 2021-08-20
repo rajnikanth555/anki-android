@@ -197,7 +197,7 @@ public abstract class NavigationDrawerActivity extends AnkiActivity implements N
         }
         mSystemNightMode = newNightMode;
         // User switched either from system-level night mode to day mode, or from day mode to night mode.
-        final SharedPreferences preferences = getPreferences();
+        //final SharedPreferences preferences = getPreferences();
         boolean setToNightMode;
         switch (newNightMode) {
             case Configuration.UI_MODE_NIGHT_YES:
