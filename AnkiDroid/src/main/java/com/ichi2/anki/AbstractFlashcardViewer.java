@@ -4044,38 +4044,6 @@ see card.js for available functions
             }
         }
 
-        @JavascriptInterface
-        public String ankiReadJson(String jsonFileName) {
 
-            String currentAnkiDroidDirectory = CollectionHelper.getCurrentAnkiDroidDirectory(getBaseContext());
-
-            File collectionMedia = new File(currentAnkiDroidDirectory, "collection.media");
-            File readFile = new File(collectionMedia, jsonFileName);
-
-            if (readFile.exists()) {
-                Map.Entry<String, String> fileNameAndExtension = FileUtil.getFileNameAndExtension(readFile.getPath());
-
-                if (fileNameAndExtension.getValue().equals(".json")) {
-
-                    try {
-                        FileInputStream fis = new FileInputStream(readFile);
-                        StringBuilder fileContent = new StringBuilder("");
-
-                        byte[] buffer = new byte[1024];
-                        int count = 0;
-                        while ((count = fis.read(buffer)) != -1) {
-                            fileContent.append(new String(buffer, 0, count));
-                        }
-
-                        return fileContent.toString();
-
-                    } catch (IOException e) {
-                        Timber.e(e.getLocalizedMessage());
-                    }
-                }
-            }
-
-            return "";
-        }
     }
 }
