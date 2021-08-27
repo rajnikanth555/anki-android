@@ -42,6 +42,7 @@ public class DBTest {
 
         String storagePath = new File(Environment.getExternalStorageDirectory(), "AnkiDroid_Test").getAbsolutePath();
         File illFatedDBFile = new File(storagePath, "illFatedDB.anki2");
+                File illFatedDBFile1 = new File(storagePath, "illFatedDB.anki2");
 File illFatedDBFile1 = new File(storagePath, "illFatedDB.anki2");
         // Make sure we have clean state to start with
         SQLiteDatabase.deleteDatabase(illFatedDBFile);
