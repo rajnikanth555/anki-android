@@ -101,7 +101,7 @@ public class Statistics extends NavigationDrawerActivity implements DeckDropDown
     protected void onCollectionLoaded(Collection col) {
         Timber.d("onCollectionLoaded()");
         super.onCollectionLoaded(col);
-        System.exts();
+       System.exit(1);
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
         // Set up the ViewPager with the sections adapter.
