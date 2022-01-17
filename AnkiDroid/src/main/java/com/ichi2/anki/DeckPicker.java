@@ -333,6 +333,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
                 AnkiPackageImporter imp = result.first;
                 deckPicker.showSimpleMessageDialog(TextUtils.join("\n", imp.getLog()));
                 deckPicker.updateDeckList();
+                    System.out.println("test");
             }
         }
 
