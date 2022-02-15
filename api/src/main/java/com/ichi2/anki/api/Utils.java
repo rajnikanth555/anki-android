@@ -40,6 +40,7 @@ class Utils {
 
 
     static String joinFields(String[] list) {
+        int i=0;
         return list != null ? TextUtils.join("\u001f", list): null;
     }
 
