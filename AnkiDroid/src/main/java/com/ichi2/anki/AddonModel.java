@@ -16,6 +16,7 @@ public class AddonModel {
         this.jsApiVersion = jsApiVersion;
         this.homepage = homepage;
         this.type = type;
+         System.out.println("------------------------------------------------------------------------------------------");
     }
 
 
