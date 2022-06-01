@@ -49,6 +49,9 @@ class Utils {
         return fields != null? fields.split(FIELD_SEPARATOR, -1): null;
     }
 
+        static String[] splitFields1(String fields) {
+        return fields != null? fields.split(FIELD_SEPARATOR, -1): null;
+    }
     static String joinTags(Set<String> tags) {
         if (tags == null || tags.isEmpty()) {
             return "";
