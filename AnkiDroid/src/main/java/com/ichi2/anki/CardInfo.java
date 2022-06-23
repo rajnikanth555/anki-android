@@ -87,6 +87,8 @@ public class CardInfo extends AnkiActivity {
         enableToolbar();
 
         startLoadingCollection();
+        
+        startLoadingCollection();
     }
 
 
@@ -149,6 +151,7 @@ public class CardInfo extends AnkiActivity {
         text.setText(value);
         text.setTextSize(12f);
         row.addView(text);
+        System.out.println("code issue");
         return text;
     }
 
