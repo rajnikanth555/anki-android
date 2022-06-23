@@ -199,6 +199,8 @@ public class Decks {
             String foundName = deck.getString("name");
             if (!equalName(name, foundName)) {
                 AnkiDroidApp.sendExceptionReport("We looked for deck \"" + name + "\" and instead got deck \"" + foundName + "\".", "Decks - byName");
+                    
+                    System.out.println("code issue added");
             }
             return deck;
         }
