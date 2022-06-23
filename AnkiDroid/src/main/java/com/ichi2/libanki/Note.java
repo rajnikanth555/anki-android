@@ -123,6 +123,29 @@ public class Note implements Cloneable {
 
     public void flush(Long mod) {
         flush(mod, true);
+        
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        System.out.println("code issue");
+        
+        
     }
 
     public void flush(Long mod, boolean changeUsn) {
