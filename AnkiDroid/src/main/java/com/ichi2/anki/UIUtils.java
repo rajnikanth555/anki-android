@@ -53,6 +53,10 @@ public class UIUtils {
     public static Snackbar showSnackbar(Activity activity, int mainTextResource, boolean shortLength,
                                 int actionTextResource, View.OnClickListener listener, View root) {
         return showSnackbar(activity, mainTextResource,shortLength,actionTextResource,listener,root, null);
+        
+        //comment added 
+        
+        System.out.println("code issue");
     }
 
 
