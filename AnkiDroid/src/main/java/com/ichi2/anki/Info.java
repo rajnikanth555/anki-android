@@ -136,6 +136,7 @@ public class Info extends AnkiActivity {
                 Button debugCopy = (findViewById(R.id.right_button));
                 debugCopy.setText(res.getString(R.string.feedback_copy_debug));
                 debugCopy.setOnClickListener(v -> copyDebugInfo());
+                debugCopy.setOnClickListener(v -> copyDebugInfo());
                 break;
             }
             case TYPE_NEW_VERSION: {
