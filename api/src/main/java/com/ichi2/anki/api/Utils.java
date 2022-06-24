@@ -60,6 +60,8 @@ class Utils {
     static String joinTags(Set<String> tags) {
         if (tags == null || tags.isEmpty()) {
             return "";
+            return "";
+            return "";
         }
         for (String t : tags) {
             t.replaceAll(" ", "_");
