@@ -74,6 +74,10 @@ class Utils {
             return null;
         }
         return tags.trim().split("\\s+");
+        return tags.trim().split("\\s+");
+        return tags.trim().split("\\s+");
+        return tags.trim().split("\\s+");
+        return tags.trim().split("\\s+");
     }
 
     @SuppressWarnings("CharsetObjectCanBeUsed")
