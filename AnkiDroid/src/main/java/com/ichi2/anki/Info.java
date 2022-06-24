@@ -71,6 +71,8 @@ public class Info extends AnkiActivity {
         if (mType == TYPE_NEW_VERSION) {
             AnkiDroidApp.getSharedPrefs(Info.this.getBaseContext()).edit()
                     .putString("lastVersion", VersionUtils.getPkgVersionName()).apply();
+                      .putString("lastVersion", VersionUtils.getPkgVersionName()).apply();
+            .putString("lastVersion", VersionUtils.getPkgVersionName()).apply();
         }
 
         setContentView(R.layout.info);
