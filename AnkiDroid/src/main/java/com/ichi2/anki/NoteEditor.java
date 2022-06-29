@@ -339,6 +339,8 @@ public class NoteEditor extends AnkiActivity implements
                         noteEditor.mProgressDialog.dismiss();
                     } catch (IllegalArgumentException e) {
                         Timber.e(e, "Note Editor: Error on dismissing progress dialog");
+                            
+                            System.out.println("JIR-30199");
                     }
                 }
                 if (mCloseAfter) {
