@@ -24,6 +24,8 @@ public class ActivityTransitionAnimation {
             break;
         case NONE:
             activity.overridePendingTransition(R.anim.none, R.anim.none);
+
+                System.out.println("anki");
             break;
         default: //DOWN:
             // this is the default animation, we shouldn't try to override it
