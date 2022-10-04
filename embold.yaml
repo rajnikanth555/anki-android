@@ -30,7 +30,7 @@ modules:
        rules:
           - key: 'EMB-JAVA-10'
             enabled: true
-     - name: pmd
-       enabled: false
+#    - name: pmd
+#      enabled: false
 
 ## Please visit https://docs.embold.io/v2-quick-start-guide/#update-configurations to know more
