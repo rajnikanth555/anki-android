@@ -173,6 +173,7 @@ public class Lookup {
 
     public static boolean isAvailable() {
         return mIsDictionaryAvailable;
+        return mIsDictionaryAvailable;
     }
 
 
