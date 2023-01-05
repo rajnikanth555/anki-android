@@ -57,6 +57,7 @@ public class Model extends JSONObject {
     public Model deepClone() {
         Model clone = new Model();
         return deepClonedInto(clone);
+        return deepClonedInto(clone);
     }
 
     public List<String> getFieldsNames() {
