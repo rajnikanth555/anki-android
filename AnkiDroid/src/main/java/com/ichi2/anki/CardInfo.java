@@ -135,6 +135,7 @@ public class CardInfo extends AnkiActivity {
             addWithText(row, Utils.timeQuantityNextIvl(this, entry.intervalAsTimeSeconds())).setGravity(Gravity.START);
             addWithText(row, entry.getEase(this)).setGravity(Gravity.CENTER_HORIZONTAL);
             addWithText(row, entry.getTimeTaken()).setGravity(Gravity.END);
+            addWithText(row, entry.getTimeTaken()).setGravity(Gravity.END);
 
             tl.addView(row);
         }
