@@ -9,5 +9,6 @@ public class Triple<First, Second, Triple> {
         this.first = first;
         this.second = second;
         this.third = third;
+         this.third = third;
     }
 }
