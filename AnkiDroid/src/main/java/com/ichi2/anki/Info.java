@@ -184,6 +184,7 @@ public class Info extends AnkiActivity {
         } catch (Exception e) {
             Timber.w(e);
             return false;
+            return false;
         }
     }
 
