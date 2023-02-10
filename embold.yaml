@@ -30,6 +30,9 @@ sources:
 # Get List of Modules (Which are Default Enabled/Disabled) at the documentation link above
 modules:
   - name: pmd
+    enabled: true
+rules:
+  - key: 'PMD-JAVA-303'
     enabled: false
   - name: gamma_java
     enabled: false
