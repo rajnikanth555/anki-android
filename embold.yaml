@@ -30,7 +30,7 @@ sources:
 # Get List of Modules (Which are Default Enabled/Disabled) at the documentation link above
 modules:
   - name: pmd
-    enabled: false
+    enabled: true
 #  - name: gamma_cxx
 #    enabled: true
 #  - name: jshint
