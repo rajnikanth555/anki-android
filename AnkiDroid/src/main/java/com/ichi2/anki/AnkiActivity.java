@@ -63,7 +63,7 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
     public static final int REQUEST_REVIEW = 901;
     /** The name of the parent class (Reviewer) */
     private final String mActivityName;
-
+private final String mActivityName1;
     private final DialogHandler mHandler = new DialogHandler(this);
 
     // custom tabs
@@ -487,11 +487,11 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
      *
      * @param message
      */
-    protected void showSimpleMessageDialog(String message) {
+    public void showSimpleMessageDialog(String message) {
         showSimpleMessageDialog(message, false);
     }
 
-    protected void showSimpleMessageDialog(String title, String message){
+    public void showSimpleMessageDialog(String title, String message){
         showSimpleMessageDialog(title, message, false);
     }
 
@@ -505,12 +505,12 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
      * @param message
      * @param reload flag which forces app to be restarted when true
      */
-    protected void showSimpleMessageDialog(String message, boolean reload) {
+    public void showSimpleMessageDialog(String message, boolean reload) {
         AsyncDialogFragment newFragment = SimpleMessageDialog.newInstance(message, reload);
         showAsyncDialogFragment(newFragment);
     }
 
-    protected void showSimpleMessageDialog(String title, @Nullable String message, boolean reload) {
+    public void showSimpleMessageDialog(String title, @Nullable String message, boolean reload) {
         AsyncDialogFragment newFragment = SimpleMessageDialog.newInstance(title, message, reload);
         showAsyncDialogFragment(newFragment);
     }
@@ -605,7 +605,7 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
     }
 
     protected boolean showedActivityFailedScreen(Bundle savedInstanceState) {
-        if (AnkiDroidApp.isInitialized()) {
+        if (!AnkiDroidApp.isInitialized()) {
             return false;
         }
 
