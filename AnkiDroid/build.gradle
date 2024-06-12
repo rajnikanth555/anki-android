@@ -50,8 +50,8 @@ android {
         //
         // This ensures the correct ordering between the various types of releases (dev < alpha < beta < release) which is
         // needed for upgrades to be offered correctly.
-        versionCode=21500139
-        versionName="2.15alpha39"
+        versionCode=21500138
+        versionName="2.15alpha38"
         minSdkVersion 21
         //noinspection OldTargetApi - also performed in api/build.fradle
         targetSdkVersion 29 // change .travis.yml platform download at same time
@@ -248,7 +248,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.6'
 
     // == Rust conversion (from Anki-Android-Backend on GitHub) ==
-    String backendVersion = "0.1.4" // We want both testing and implementation on the same version
+    String backendVersion = "0.1.2" // We want both testing and implementation on the same version
     // build with ./gradlew rsdroid:assembleRelease
     // In my experience, using `files()` currently requires a reindex operation, which is slow.
     // implementation files("C:\\GitHub\\Rust-Test\\rsdroid\\build\\outputs\\aar\\rsdroid-release.aar")
@@ -278,6 +278,8 @@ dependencies {
     implementation 'com.jakewharton.timber:timber:4.7.1'
     implementation 'org.jsoup:jsoup:1.13.1'
     implementation "com.github.zafarkhaja:java-semver:0.9.0" // For AnkiDroid JS API Versioning
+    // jarchivelib: nothing change in previous 6 months, for untar .tgz file downloaded from npmjs for AnkiDroid js addon support
+    implementation 'org.rauschig:jarchivelib:1.1.0'
     implementation 'com.github.yalantis:ucrop:2.2.6'
     implementation 'com.drakeet.drawer:drawer:1.0.3'
     api project(":api")
