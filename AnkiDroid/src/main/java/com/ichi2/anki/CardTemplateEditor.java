@@ -23,6 +23,11 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContract;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.CheckResult;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -129,7 +134,6 @@ public class CardTemplateEditor extends AnkiActivity implements DeckSelectionDia
             mStartingOrdId = savedInstanceState.getInt("ordId");
             mTempModel = TemporaryModel.fromBundle(savedInstanceState);
         }
-
         // Disable the home icon
         enableToolbar();
         startLoadingCollection();
@@ -193,6 +197,7 @@ public class CardTemplateEditor extends AnkiActivity implements DeckSelectionDia
         if (mStartingOrdId != -1) {
             mViewPager.setCurrentItem(mStartingOrdId, animationDisabled());
         }
+
     }
 
     public boolean modelHasChanged() {
@@ -542,7 +547,9 @@ public class CardTemplateEditor extends AnkiActivity implements DeckSelectionDia
             // Save the model and pass the filename if updated
             tempModel.setEditedModelFileName(TemporaryModel.saveTempModel(mTemplateEditor, tempModel.getModel()));
             i.putExtra(TemporaryModel.INTENT_MODEL_FILENAME, tempModel.getEditedModelFileName());
-            startActivityForResult(i, REQUEST_PREVIEWER);
+            //Before we used startActivityForResult(i, REQUEST_PREVIEWER);
+            //Now we have to use activityResultLauncher.launch
+            activityResultLauncher.launch(i);
         }
 
 
@@ -559,7 +566,7 @@ public class CardTemplateEditor extends AnkiActivity implements DeckSelectionDia
             FunctionalInterfaces.Filter<Deck> nonDynamic = (d) -> !Decks.isDynamic(d);
             List<SelectableDeck> decks = SelectableDeck.fromCollection(col, nonDynamic);
             String title = getString(R.string.card_template_editor_deck_override);
-            DeckSelectionDialog dialog = DeckSelectionDialog.newInstance(title, explanation, true, decks);
+            DeckSelectionDialog dialog = DeckSelectionDialog.newInstance(title, explanation, decks);
             AnkiActivity.showDialogFragment(activity, dialog);
         }
 
@@ -585,7 +592,8 @@ public class CardTemplateEditor extends AnkiActivity implements DeckSelectionDia
                 return;
             }
             Intent browserAppearanceIntent = CardTemplateBrowserAppearanceEditor.getIntentFromTemplate(context, currentTemplate);
-            startActivityForResult(browserAppearanceIntent, REQUEST_CARD_BROWSER_APPEARANCE);
+            //startActivityForResult(browserAppearanceIntent, REQUEST_CARD_BROWSER_APPEARANCE);
+            activityResultLauncher.launch(browserAppearanceIntent);
         }
 
 
@@ -628,23 +636,25 @@ public class CardTemplateEditor extends AnkiActivity implements DeckSelectionDia
             return false;
         }
 
+        ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if (result.getResultCode() == REQUEST_CARD_BROWSER_APPEARANCE) {
+                            onCardBrowserAppearanceResult(result.getResultCode(), result.getData());
+                            return;
+                        }
 
-        @SuppressWarnings("deprecation") // Tracked as https://github.com/ankidroid/Anki-Android/issues/8293
-        @Override
-        public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-            super.onActivityResult(requestCode, resultCode, data);
-            if (requestCode == REQUEST_CARD_BROWSER_APPEARANCE) {
-                onCardBrowserAppearanceResult(resultCode, data);
-                return;
-            }
-
-            if (requestCode == REQUEST_PREVIEWER) {
-                TemporaryModel.clearTempModelFiles();
-                // Make sure the fragments reinitialize, otherwise there is staleness on return
-                ((TemplatePagerAdapter)mTemplateEditor.mViewPager.getAdapter()).ordinalShift();
-                mTemplateEditor.mViewPager.getAdapter().notifyDataSetChanged();
-            }
-        }
+                        if (result.getResultCode() == REQUEST_PREVIEWER) {
+                            TemporaryModel.clearTempModelFiles();
+                            // Make sure the fragments reinitialize, otherwise there is staleness on return
+                            ((TemplatePagerAdapter)mTemplateEditor.mViewPager.getAdapter()).ordinalShift();
+                            mTemplateEditor.mViewPager.getAdapter().notifyDataSetChanged();
+                        }
+                    }
+                }
+        );
 
 
         private void onCardBrowserAppearanceResult(int resultCode, @Nullable Intent data) {
