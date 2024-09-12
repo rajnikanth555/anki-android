@@ -37,7 +37,6 @@ import android.database.SQLException;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
@@ -125,6 +124,7 @@ import com.ichi2.libanki.Models;
 import com.ichi2.libanki.Utils;
 import com.ichi2.libanki.importer.AnkiPackageImporter;
 import com.ichi2.libanki.sched.AbstractDeckTreeNode;
+import com.ichi2.libanki.sched.DeckTreeNode;
 import com.ichi2.libanki.sync.CustomSyncServerUrlException;
 import com.ichi2.libanki.sync.Syncer;
 import com.ichi2.libanki.utils.TimeUtils;
@@ -145,6 +145,7 @@ import com.ichi2.utils.JSONException;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -192,8 +193,6 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
     // Short animation duration from system
     private int mShortAnimDuration;
-
-    private boolean mBackButtonPressedToExit = false;
 
     private RelativeLayout mDeckPickerContent;
 
@@ -863,7 +862,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
                 }
             } else if (resultCode == Reviewer.RESULT_ABORT_AND_SYNC) {
                 Timber.i("Obtained Abort and Sync result");
-                TaskManager.waitForAllToFinish(4);
+                CollectionTask.waitForAllToFinish(4);
                 sync();
             }
         } else if (requestCode == REQUEST_PATH_UPDATE) {
@@ -1035,13 +1034,8 @@ public class DeckPicker extends NavigationDrawerActivity implements
             if (mFloatingActionMenu.isFABOpen()) {
                 mFloatingActionMenu.closeFloatingActionMenu();
             } else {
-                if (mBackButtonPressedToExit) {
-                    automaticSync();
-                    finishWithAnimation();
-                } else {
-                    UIUtils.showThemedToast(this, getString(R.string.back_pressed_once), true);
-                }
-                mBackButtonPressedToExit = true;
+                automaticSync();
+                finishWithAnimation();
             }
         }
     }
@@ -1146,17 +1140,6 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
 
     private void showStartupScreensAndDialogs(SharedPreferences preferences, int skip) {
-
-        // For Android 8/8.1 we want to use software rendering by default or the Reviewer UI is broken #7369
-        if (CompatHelper.getSdkVersion() == Build.VERSION_CODES.O ||
-                CompatHelper.getSdkVersion() == Build.VERSION_CODES.O_MR1) {
-                if (!preferences.contains("softwareRender")) {
-                    Timber.i("Android 8/8.1 detected with no render preference. Turning on software render.");
-                    preferences.edit().putBoolean("softwareRender", true).apply();
-                } else {
-                    Timber.i("Android 8/8.1 detected, software render preference already exists.");
-                }
-        }
 
         if (!BackupManager.enoughDiscSpace(CollectionHelper.getCurrentAnkiDroidDirectory(this))) {
             Timber.i("Not enough space to do backup");
@@ -1377,15 +1360,13 @@ public class DeckPicker extends NavigationDrawerActivity implements
         }
     }
 
-    private UndoTaskListener undoTaskListener(boolean isReview) {
-        return new UndoTaskListener(isReview, this);
+    private UndoTaskListener undoTaskListener() {
+        return new UndoTaskListener(this);
     }
     private static class UndoTaskListener extends TaskListenerWithContext<DeckPicker, Card, BooleanGetter> {
-        private final boolean isReview;
 
-        public UndoTaskListener(boolean isReview, DeckPicker deckPicker) {
+        public UndoTaskListener(DeckPicker deckPicker) {
             super(deckPicker);
-            this.isReview = isReview;
         }
 
 
@@ -1403,19 +1384,14 @@ public class DeckPicker extends NavigationDrawerActivity implements
 
         @Override
         public void actualOnPostExecute(@NonNull DeckPicker deckPicker, BooleanGetter voi) {
-            deckPicker.hideProgressBar();
             Timber.i("Undo completed");
-            if (isReview) {
-                Timber.i("Review undone - opening reviewer.");
-                deckPicker.openReviewer();
-            }
+            deckPicker.hideProgressBar();
+            deckPicker.openReviewer();
         }
     }
     private void undo() {
         Timber.i("undo()");
-        String undoReviewString = getResources().getString(R.string.undo_action_review);
-        final boolean isReview = undoReviewString.equals(getCol().undoName(getResources()));
-        TaskManager.launchCollectionTask(new CollectionTask.Undo(), undoTaskListener(isReview));
+        TaskManager.launchCollectionTask(new CollectionTask.Undo(), undoTaskListener());
     }
 
 
