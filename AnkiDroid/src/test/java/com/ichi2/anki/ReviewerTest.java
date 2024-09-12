@@ -95,7 +95,7 @@ public class ReviewerTest extends RobolectricTest {
         try (ActivityScenario<Reviewer> scenario = ActivityScenario.launch(Reviewer.class)) {
             scenario.onActivity(reviewer -> {
                 reviewer.blockControls(true);
-                reviewer.executeCommand(ViewerCommand.COMMAND_EXIT);
+                reviewer.executeCommand(ViewerCommand.EXIT);
             });
             assertThat(scenario.getResult().getResultCode(), is(RESULT_DEFAULT));
         }
@@ -235,11 +235,11 @@ public class ReviewerTest extends RobolectricTest {
         Models models = col.getModels();
 
         Decks decks = col.getDecks();
-        Long didAb = addDeck("A::B");
+        Long didAb = decks.id("A::B");
         Model basic = models.byName(AnkiDroidApp.getAppResources().getString(R.string.basic_model_name));
         basic.put("did", didAb);
         addNoteUsingBasicModel("foo", "bar");
-        Long didA = addDeck("A");
+        Long didA = decks.id("A");
         decks.select(didA);
         Reviewer reviewer = startReviewer();
         waitForAsyncTasksToComplete();

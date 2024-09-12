@@ -16,45 +16,46 @@
 
 package com.ichi2.anki.reviewer;
 
+import android.content.SharedPreferences;
 import android.view.KeyEvent;
+import android.view.ViewConfiguration;
 
+import com.ichi2.anki.cardviewer.Gesture;
 import com.ichi2.anki.cardviewer.ViewerCommand;
-import com.ichi2.anki.testutil.MockReviewerUi;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import androidx.annotation.NonNull;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-@RunWith(AndroidJUnit4.class)
-public class PeripheralKeymapTest {
-
+public class KeyProcessorTest {
     @Test
-    public void testNumpadAction() {
-        // #7736 Ensures that a numpad key is passed through (mostly testing num lock)
+    public void flagAndAnswerDoNotConflict() {
         List<ViewerCommand> processed = new ArrayList<>();
 
-        KeyProcessor keyProcessor = new KeyProcessor(processed::add);
+        KeyProcessor processor = new KeyProcessor(processed::add);
+        processor.add(Binding.unicode(Binding.ModifierKeys.ctrl(), (char)49), ViewerCommand.TOGGLE_FLAG_RED);
 
-        keyProcessor.add(Binding.keyCode(KeyEvent.KEYCODE_NUMPAD_1), ViewerCommand.ANSWER_FIRST_BUTTON);
+        KeyEvent event = mock(KeyEvent.class);
+        when(event.getUnicodeChar()).thenReturn(0);
+        when(event.isCtrlPressed()).thenReturn(true);
+        when(event.getUnicodeChar(0)).thenReturn(49);
 
-        keyProcessor.onKey(getNumpadEvent(KeyEvent.KEYCODE_NUMPAD_1));
+        assertThat((char) event.getUnicodeChar(), is('\0'));
+        assertThat((char) event.getUnicodeChar(0), is('1'));
 
+        processor.onKey(event);
         assertThat(processed, hasSize(1));
-        assertThat(processed.get(0), is(ViewerCommand.ANSWER_FIRST_BUTTON));
-    }
-
-
-    @NonNull
-    protected KeyEvent getNumpadEvent(@SuppressWarnings("SameParameterValue") int keycode) {
-        return new KeyEvent(0, 0, KeyEvent.ACTION_UP, keycode, 0, KeyEvent.META_NUM_LOCK_ON);
+        assertThat(processed.get(0), is(ViewerCommand.TOGGLE_FLAG_RED));
     }
 }

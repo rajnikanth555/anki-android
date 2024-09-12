@@ -22,9 +22,6 @@ import com.ichi2.anki.reviewer.CardMarker.FlagDef;
 import com.ichi2.libanki.Card;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import static com.ichi2.anki.reviewer.CardMarker.FLAG_BLUE;
 import static com.ichi2.anki.reviewer.CardMarker.FLAG_GREEN;
@@ -38,15 +35,14 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(AndroidJUnit4.class)
-public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
+public class AbstractFlashcardViewerCommandTest {
 
     @Test
     public void doubleTapSetsNone() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_RED);
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_RED);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_RED);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_RED);
 
         assertThat(viewer.getLastFlag(), is(FLAG_NONE));
     }
@@ -55,7 +51,7 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void noneDoesNothing() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_UNSET_FLAG);
+        viewer.executeCommand(ViewerCommand.UNSET_FLAG);
 
         assertThat(viewer.getLastFlag(), is(FLAG_NONE));
     }
@@ -64,8 +60,8 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void doubleNoneDoesNothing() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_UNSET_FLAG);
-        viewer.executeCommand(ViewerCommand.COMMAND_UNSET_FLAG);
+        viewer.executeCommand(ViewerCommand.UNSET_FLAG);
+        viewer.executeCommand(ViewerCommand.UNSET_FLAG);
 
         assertThat(viewer.getLastFlag(), is(FLAG_NONE));
     }
@@ -74,8 +70,8 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void flagCanBeChanged() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_RED);
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_BLUE);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_RED);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_BLUE);
 
         assertThat(viewer.getLastFlag(), is(FLAG_BLUE));
     }
@@ -84,8 +80,8 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void unsetUnsets() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_RED);
-        viewer.executeCommand(ViewerCommand.COMMAND_UNSET_FLAG);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_RED);
+        viewer.executeCommand(ViewerCommand.UNSET_FLAG);
 
         assertThat(viewer.getLastFlag(), is(FLAG_NONE));
     }
@@ -94,7 +90,7 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void tapRedFlagSetsRed() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_RED);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_RED);
 
         assertThat(viewer.getLastFlag(), is(FLAG_RED));
     }
@@ -103,7 +99,7 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void tapOrangeFlagSetsOrange() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_ORANGE);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_ORANGE);
 
         assertThat(viewer.getLastFlag(), is(FLAG_ORANGE));
     }
@@ -112,7 +108,7 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void tapGreenFlagSesGreen() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_GREEN);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_GREEN);
 
         assertThat(viewer.getLastFlag(), is(FLAG_GREEN));
     }
@@ -121,32 +117,32 @@ public class AbstractFlashcardViewerCommandTest extends RobolectricTest {
     public void tapBlueFlagSetsBlue() {
         CommandTestCardViewer viewer = getViewer();
 
-        viewer.executeCommand(ViewerCommand.COMMAND_TOGGLE_FLAG_BLUE);
+        viewer.executeCommand(ViewerCommand.TOGGLE_FLAG_BLUE);
 
         assertThat(viewer.getLastFlag(), is(FLAG_BLUE));
     }
 
     @Test
     public void doubleTapRedUnsets() {
-        testDoubleTapUnsets(ViewerCommand.COMMAND_TOGGLE_FLAG_RED);
+        testDoubleTapUnsets(ViewerCommand.TOGGLE_FLAG_RED);
     }
 
     @Test
     public void doubleTapOrangeUnsets() {
-        testDoubleTapUnsets(ViewerCommand.COMMAND_TOGGLE_FLAG_ORANGE);
+        testDoubleTapUnsets(ViewerCommand.TOGGLE_FLAG_ORANGE);
     }
 
     @Test
     public void doubleTapGreenUnsets() {
-        testDoubleTapUnsets(ViewerCommand.COMMAND_TOGGLE_FLAG_GREEN);
+        testDoubleTapUnsets(ViewerCommand.TOGGLE_FLAG_GREEN);
     }
 
     @Test
     public void doubleTapBlueUnsets() {
-        testDoubleTapUnsets(ViewerCommand.COMMAND_TOGGLE_FLAG_BLUE);
+        testDoubleTapUnsets(ViewerCommand.TOGGLE_FLAG_BLUE);
     }
 
-    private void testDoubleTapUnsets(int command) {
+    private void testDoubleTapUnsets(ViewerCommand command) {
         CommandTestCardViewer viewer = getViewer();
 
         viewer.executeCommand(command);
