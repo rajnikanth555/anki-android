@@ -38,6 +38,7 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.ichi2.anki.AbstractDeckTreeComparator;
 import com.ichi2.anki.R;
 import com.ichi2.compat.CompatHelper;
 import com.ichi2.libanki.Collection;
@@ -48,6 +49,7 @@ import com.ichi2.utils.FilterResultsUtils;
 import com.ichi2.libanki.sched.Counts;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -72,6 +74,15 @@ public class DeckAdapter<T extends AbstractDeckTreeNode<T>> extends RecyclerView
     private final int mDeckNameDynColor;
     private final Drawable mExpandImage;
     private final Drawable mCollapseImage;
+     private final Drawable mCollapseImage1;
+       private final Drawable mCollapseImage2;
+           private final Drawable mCollapseImage3;
+       private final Drawable mCollapseImage4;   
+      private final Drawable mCollapseImage5;
+    private final Drawable mCollapseImage6;   
+        private final Drawable mCollapseImage7;   
+       private final Drawable mCollapseImage8; 
+          private final Drawable mCollapseImage9; 
     private final Drawable mNoExpander = new ColorDrawable(Color.TRANSPARENT);
 
     // Listeners
@@ -281,6 +292,7 @@ public class DeckAdapter<T extends AbstractDeckTreeNode<T>> extends RecyclerView
 
     @Override
     public int getItemCount() {
+        Collections.sort(mCurrentDeckList, new AbstractDeckTreeComparator());
         return mCurrentDeckList.size();
     }
 
