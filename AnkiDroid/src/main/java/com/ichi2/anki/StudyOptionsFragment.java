@@ -18,19 +18,27 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LevelListDrawable;
+import android.os.AsyncTask;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.text.HtmlCompat;
 import androidx.fragment.app.Fragment;
 import androidx.appcompat.widget.Toolbar;
 
+import android.text.Html;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -38,6 +46,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.ichi2.anim.ActivityTransitionAnimation;
@@ -45,6 +54,7 @@ import com.ichi2.anki.dialogs.CustomStudyDialog;
 import com.ichi2.async.CollectionTask;
 import com.ichi2.async.TaskListener;
 import com.ichi2.async.TaskManager;
+import com.ichi2.compat.CompatHelper;
 import com.ichi2.libanki.Card;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.Consts;
@@ -54,11 +64,21 @@ import com.ichi2.libanki.Deck;
 import com.ichi2.themes.StyledProgressDialog;
 import com.ichi2.utils.BooleanGetter;
 import com.ichi2.utils.HtmlUtils;
-import com.ichi2.utils.UiUtil;
+
+
+
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 import timber.log.Timber;
 
 import static com.ichi2.anim.ActivityTransitionAnimation.Direction.*;
+import static com.ichi2.libanki.Consts.DECK_DYN;
+import static com.ichi2.libanki.Consts.DECK_STD;
 
 public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItemClickListener {
 
@@ -69,6 +89,8 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
     private static final int BROWSE_CARDS = 3;
     private static final int STATISTICS = 4;
     private static final int DECK_OPTIONS = 5;
+    int ScreenW, ScreenH;
+
 
     /**
      * Constants for selecting which content view to display
@@ -95,6 +117,10 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
     /**
      * UI elements for "Study Options" view
      */
+
+
+
+
     @Nullable
     private View mStudyOptionsView;
     private View mDeckInfoLayout;
@@ -158,7 +184,6 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
      *                      deck has no options associated with it yet and should use a default
      *                      set of values.
      */
-    @SuppressWarnings("deprecation") // Tracked as https://github.com/ankidroid/Anki-Android/issues/8293
     private void openFilteredDeckOptions(boolean defaultConfig) {
         Intent i = new Intent(getActivity(), FilteredDeckOptions.class);
         i.putExtra("defaultConfig", defaultConfig);
@@ -206,6 +231,15 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
             configureToolbar();
         }
         refreshInterface(true);
+
+        //For Displaying Image in Desc
+        DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+        float dpWidth = displayMetrics.widthPixels;
+        float dpHeight = displayMetrics.heightPixels;
+
+         ScreenW = (int) dpWidth;
+         ScreenH = (int) dpHeight;
+
         return studyOptionsView;
     }
 
@@ -242,7 +276,6 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
     }
 
 
-    @SuppressWarnings("deprecation") // Tracked as https://github.com/ankidroid/Anki-Android/issues/8293
     private void openReviewer() {
         Intent reviewer = new Intent(getActivity(), Reviewer.class);
         if (mFragmented) {
@@ -314,7 +347,6 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
         }
     };
 
-    @SuppressWarnings("deprecation") // Tracked as https://github.com/ankidroid/Anki-Android/issues/8293
     @Override
     public boolean onMenuItemClick(MenuItem item) {
         int itemId = item.getItemId();
@@ -344,13 +376,13 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
             return true;
         } else if (itemId == R.id.action_rebuild) {
             Timber.i("StudyOptionsFragment:: rebuild cram deck button pressed");
-            mProgressDialog = StyledProgressDialog.show(getActivity(), null,
+            mProgressDialog = StyledProgressDialog.show(getActivity(), "",
                     getResources().getString(R.string.rebuild_filtered_deck), true);
             TaskManager.launchCollectionTask(new CollectionTask.RebuildCram(), getCollectionTaskListener(true));
             return true;
         } else if (itemId == R.id.action_empty) {
             Timber.i("StudyOptionsFragment:: empty cram deck button pressed");
-            mProgressDialog = StyledProgressDialog.show(getActivity(), null,
+            mProgressDialog = StyledProgressDialog.show(getActivity(), "",
                     getResources().getString(R.string.empty_filtered_deck), false);
             TaskManager.launchCollectionTask(new CollectionTask.EmptyCram(), getCollectionTaskListener(true));
             return true;
@@ -415,9 +447,7 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
             }
             // Set the back button listener
             if (!mFragmented) {
-                final Drawable icon = AppCompatResources.getDrawable(getContext(), R.drawable.ic_arrow_back_white_24dp);
-                icon.setAutoMirrored(true);
-                mToolbar.setNavigationIcon(icon);
+                mToolbar.setNavigationIcon(R.drawable.ic_arrow_back_white_24dp);
                 mToolbar.setNavigationOnClickListener(v -> ((AnkiActivity) getActivity()).finishWithAnimation(RIGHT));
             }
         } catch (IllegalStateException e) {
@@ -439,7 +469,6 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
     }
 
 
-    @SuppressWarnings("deprecation") // Tracked as https://github.com/ankidroid/Anki-Android/issues/8293
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
@@ -469,7 +498,7 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
                 if (deck.isDyn() && deck.has("empty")) {
                     deck.remove("empty");
                 }
-                    mProgressDialog = StyledProgressDialog.show(getActivity(), null,
+                    mProgressDialog = StyledProgressDialog.show(getActivity(), "",
                             getResources().getString(R.string.rebuild_filtered_deck), true);
                     TaskManager.launchCollectionTask(new CollectionTask.RebuildCram(), getCollectionTaskListener(true));
             } else {
@@ -532,59 +561,30 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
     }
 
 
-    public static class DeckStudyData {
-        /**
-         * The number of new card to see today in a deck, including subdecks.
-         */
-        public final int mNewCardsToday;
-        /**
-         * The number of (repetition of) card in learning to see today in a deck, including subdecks. The exact way cards with multiple steps are counted depends on the scheduler
-         */
-        public final int mLrnCardsToday;
-        /**
-         * The number of review card to see today in a deck, including subdecks.
-         */
-        public final int mRevCardsToday;
-        /**
-         * The number of new cards in this decks, and subdecks.
-         */
-        public final int mNumberOfNewCardsInDeck;
-        /**
-         * Number of cards in this decks and its subdecks.
-         */
-        public final int mNumberOfCardsInDeck;
-        /**
-         * Expected time spent today to review all due cards in this deck.
-         */
-        public final int mEta;
-
-
-        public DeckStudyData(int mNewCardsToday, int mLrnCardsToday, int mRevCardsToday, int mNumberOfNewCardsInDeck, int mNumberOfCardsInDeck, int mEta) {
-            this.mNewCardsToday = mNewCardsToday;
-            this.mLrnCardsToday = mLrnCardsToday;
-            this.mRevCardsToday = mRevCardsToday;
-            this.mNumberOfNewCardsInDeck = mNumberOfNewCardsInDeck;
-            this.mNumberOfCardsInDeck = mNumberOfCardsInDeck;
-            this.mEta = mEta;
-        }
-    }
-
     /**
      * Returns a listener that rebuilds the interface after execute.
      *
      * @param refreshDecklist If true, the listener notifies the parent activity to update its deck list
      *                        to reflect the latest values.
      */
-    private TaskListener<Void, DeckStudyData> getCollectionTaskListener(final boolean refreshDecklist) {
-        return new TaskListener<Void, DeckStudyData>() {
+    private TaskListener<Void, int[]> getCollectionTaskListener(final boolean refreshDecklist) {
+        return new TaskListener<Void, int[]>() {
             @Override
             public void onPreExecute() {
+
             }
 
             @Override
-            public void onPostExecute(DeckStudyData data) {
+            public void onPostExecute(int[] obj) {
                 dismissProgressDialog();
-                if (data != null) {
+                if (obj != null) {
+                    // Get the return values back from the AsyncTask
+                    int newCards = obj[0];
+                    int lrnCards = obj[1];
+                    int revCards = obj[2];
+                    int totalNew = obj[3];
+                    int totalCards = obj[4];
+                    int eta = obj[5];
 
                     // Don't do anything if the fragment is no longer attached to it's Activity or col has been closed
                     if (getActivity() == null) {
@@ -627,13 +627,13 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
 
                     // Switch between the empty view, the ordinary view, and the "congratulations" view
                     boolean isDynamic = deck.isDyn();
-                    if (data.mNumberOfCardsInDeck == 0 && !isDynamic) {
+                    if (totalCards == 0 && !isDynamic) {
                         mCurrentContentView = CONTENT_EMPTY;
                         mDeckInfoLayout.setVisibility(View.VISIBLE);
                         mTextCongratsMessage.setVisibility(View.VISIBLE);
                         mTextCongratsMessage.setText(R.string.studyoptions_empty);
                         mButtonStart.setVisibility(View.GONE);
-                    } else if (data.mNewCardsToday + data.mLrnCardsToday + data.mRevCardsToday == 0) {
+                    } else if (newCards + lrnCards + revCards == 0) {
                         mCurrentContentView = CONTENT_CONGRATS;
                         if (!isDynamic) {
                             mDeckInfoLayout.setVisibility(View.GONE);
@@ -660,21 +660,21 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
                         desc = getCol().getDecks().getActualDescription();
                     }
                     if (desc.length() > 0) {
-                        mTextDeckDescription.setText(formatDescription(desc));
+                        new HtmlImageGetter(mTextDeckDescription, desc, getContext());
                         mTextDeckDescription.setVisibility(View.VISIBLE);
                     } else {
                         mTextDeckDescription.setVisibility(View.GONE);
                     }
 
                     // Set new/learn/review card counts
-                    mTextTodayNew.setText(String.valueOf(data.mNewCardsToday));
-                    mTextTodayLrn.setText(String.valueOf(data.mLrnCardsToday));
-                    mTextTodayRev.setText(String.valueOf(data.mRevCardsToday));
+                    mTextTodayNew.setText(String.valueOf(newCards));
+                    mTextTodayLrn.setText(String.valueOf(lrnCards));
+                    mTextTodayRev.setText(String.valueOf(revCards));
 
                     // Set the total number of new cards in deck
-                    if (data.mNumberOfNewCardsInDeck < NEW_CARD_COUNT_TRUNCATE_THRESHOLD) {
+                    if (totalNew < NEW_CARD_COUNT_TRUNCATE_THRESHOLD) {
                         // if it hasn't been truncated by libanki then just set it usually
-                        mTextNewTotal.setText(String.valueOf(data.mNumberOfNewCardsInDeck));
+                        mTextNewTotal.setText(String.valueOf(totalNew));
                     } else {
                         // if truncated then make a thread to allow full count to load
                         mTextNewTotal.setText(">1000");
@@ -700,10 +700,10 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
                     }
 
                     // Set total number of cards
-                    mTextTotal.setText(String.valueOf(data.mNumberOfCardsInDeck));
+                    mTextTotal.setText(String.valueOf(totalCards));
                     // Set estimated time remaining
-                    if (data.mEta != -1) {
-                        mTextETA.setText(Integer.toString(data.mEta));
+                    if (eta != -1) {
+                        mTextETA.setText(Integer.toString(eta));
                     } else {
                         mTextETA.setText("-");
                     }
@@ -731,15 +731,6 @@ public class StudyOptionsFragment extends Fragment implements Toolbar.OnMenuItem
         return true;
     }
 
-    @VisibleForTesting()
-    static Spanned formatDescription(String desc) {
-        //#5715: In deck description, ignore what is in style and script tag
-        //Since we don't currently execute the JS/CSS, it's not worth displaying.
-        String withStrippedTags = Utils.stripHTMLScriptAndStyleTags(desc);
-        //#5188 - fromHtml displays newlines as " "
-        String withFixedNewlines = HtmlUtils.convertNewlinesToHtml(withStrippedTags);
-        return HtmlCompat.fromHtml(withFixedNewlines, HtmlCompat.FROM_HTML_MODE_LEGACY);
-    }
 
     private Collection getCol() {
         return CollectionHelper.getInstance().getCol(getContext());
