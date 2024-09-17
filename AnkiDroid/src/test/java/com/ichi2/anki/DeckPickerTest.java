@@ -189,8 +189,6 @@ public class DeckPickerTest extends RobolectricTest {
 
         deckPicker.confirmDeckDeletion(did);
 
-        advanceRobolectricLooperWithSleep();
-
         assertThat("deck was deleted", getCol().getDecks().count(), is(1));
     }
 }

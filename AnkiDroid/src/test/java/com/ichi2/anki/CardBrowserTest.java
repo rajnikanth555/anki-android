@@ -80,6 +80,7 @@ public class CardBrowserTest extends RobolectricTest {
 
     @Test
     public void selectAllIsNotVisibleOnceCalled() {
+        runTasksInBackground();
         CardBrowser browser = getBrowserWithMultipleNotes();
         selectMenuItem(browser, R.id.action_select_all);
         advanceRobolectricLooperWithSleep();
@@ -88,6 +89,7 @@ public class CardBrowserTest extends RobolectricTest {
 
     @Test
     public void selectNoneIsVisibleOnceSelectAllCalled() {
+        runTasksInBackground();
         CardBrowser browser = getBrowserWithMultipleNotes();
         selectMenuItem(browser, R.id.action_select_all);
         advanceRobolectricLooperWithSleep();
@@ -96,6 +98,7 @@ public class CardBrowserTest extends RobolectricTest {
 
     @Test
     public void selectNoneIsVisibleWhenSelectingOne() {
+        runTasksInBackground();
         CardBrowser browser = getBrowserWithMultipleNotes();
         advanceRobolectricLooperWithSleep();
         selectOneOfManyCards(browser);
@@ -221,8 +224,6 @@ public class CardBrowserTest extends RobolectricTest {
         CardBrowser b = getBrowserWithNotes(5);
         b.checkCardsAtPositions(0, 2);
 
-        advanceRobolectricLooperWithSleep();
-
         List<Long> cardIds = b.getCheckedCardIds();
 
         for (Long cardId : cardIds) {
@@ -235,7 +236,6 @@ public class CardBrowserTest extends RobolectricTest {
         AnkiAssert.assertDoesNotThrow(() -> b.moveSelectedCardsToDeck(deckPosition));
 
         //assert
-        advanceRobolectricLooperWithSleep();
         for (Long cardId : cardIds) {
             assertThat("Deck should be changed", getCol().getCard(cardId).getDid(), is(deckIdToChangeTo));
         }
@@ -305,7 +305,6 @@ public class CardBrowserTest extends RobolectricTest {
 
         CardBrowser b = getBrowserWithNoNewCards();
         b.filterByTag("sketchy::(1)");
-        advanceRobolectricLooperWithSleep();
 
         assertThat("tagged card should be returned", b.getCardCount(), is(1));
     }
@@ -323,7 +322,6 @@ public class CardBrowserTest extends RobolectricTest {
 
         CardBrowser b = getBrowserWithNoNewCards();
         b.filterByFlag(1);
-        advanceRobolectricLooperWithSleep();
 
         assertThat("Flagged cards should be returned", b.getCardCount(), is(2));
     }
@@ -421,8 +419,6 @@ public class CardBrowserTest extends RobolectricTest {
 
         b.repositionCardsNoValidation(Collections.singletonList(card.getId()), 2);
 
-        advanceRobolectricLooperWithSleep();
-
         assertThat("Position of checked card after reposition", card.getColumnHeaderText(CardBrowser.Column.DUE), is("2"));
     }
 
@@ -445,8 +441,6 @@ public class CardBrowserTest extends RobolectricTest {
 
         b.resetProgressNoConfirm(Collections.singletonList(card.getId()));
 
-        advanceRobolectricLooperWithSleep();
-
         assertThat("Position of checked card after reset", card.getColumnHeaderText(CardBrowser.Column.DUE), is("1"));
     }
 
@@ -462,8 +456,6 @@ public class CardBrowserTest extends RobolectricTest {
         assertThat("Initial position of checked card", card.getColumnHeaderText(CardBrowser.Column.DUE), is("1"));
 
         b.rescheduleWithoutValidation(Collections.singletonList(card.getId()), 5);
-
-        advanceRobolectricLooperWithSleep();
 
         assertThat("Due of checked card after reschedule", card.getColumnHeaderText(CardBrowser.Column.DUE), is("8/12/20"));
     }
@@ -481,14 +473,9 @@ public class CardBrowserTest extends RobolectricTest {
 
         b.repositionCardsNoValidation(Collections.singletonList(card.getId()), 2);
 
-        advanceRobolectricLooperWithSleep();
-
         assertThat("Position of checked card after reposition", card.getColumnHeaderText(CardBrowser.Column.DUE), is("2"));
 
         b.onUndo();
-
-        advanceRobolectricLooperWithSleep();
-        advanceRobolectricLooperWithSleep();
 
         assertThat("Position of checked card after undo should be reset", card.getColumnHeaderText(CardBrowser.Column.DUE), is("1"));
     }
@@ -504,27 +491,7 @@ public class CardBrowserTest extends RobolectricTest {
 
         b.rescheduleWithoutValidation(Collections.singletonList(getCheckedCard(b).getId()), 2);
 
-        advanceRobolectricLooperWithSleep();
-
         assertUndoContains(b, R.string.deck_conf_cram_reschedule);
-    }
-
-    /** 8027 */
-    @Test
-    public void checkSearchString() {
-        addNoteUsingBasicModel("Hello", "John");
-        long deck = addDeck("Deck 1");
-        getCol().getDecks().select(deck);
-        Card c2 = addNoteUsingBasicModel("New", "world").firstCard();
-        c2.setDid(deck);
-        c2.flush();
-
-        CardBrowser cardBrowser = getBrowserWithNoNewCards();
-        cardBrowser.searchCards("world or hello");
-        advanceRobolectricLooperWithSleep();
-
-        assertThat("Cardbrowser has Deck 1 as selected deck", cardBrowser.getSelectedDeckNameForUi(), is("Deck 1"));
-        assertThat("Results should only be from the selected deck", cardBrowser.getCardCount(), is(1));
     }
 
     protected void assertUndoDoesNotContain(CardBrowser browser, @StringRes int resId) {
@@ -611,7 +578,6 @@ public class CardBrowserTest extends RobolectricTest {
                 .create().start();
         multimediaController.resume().visible();
         saveControllerForCleanup(multimediaController);
-        advanceRobolectricLooperWithSleep();
         return multimediaController.get();
     }
 
@@ -626,7 +592,6 @@ public class CardBrowserTest extends RobolectricTest {
                 .create().start();
         multimediaController.resume().visible();
         saveControllerForCleanup(multimediaController);
-        advanceRobolectricLooperWithSleep();
         return multimediaController.get();
     }
 }

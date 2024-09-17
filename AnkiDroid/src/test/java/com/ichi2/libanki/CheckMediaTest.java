@@ -43,6 +43,7 @@ public class CheckMediaTest extends RobolectricTest {
 
     @Test
     public void checkMediaWorksAfterMissingMetaTable() throws ExecutionException, InterruptedException {
+        runTasksInBackground();
         // 7421
         getCol().getMedia().getDb().getDatabase().execSQL("drop table meta");
 
