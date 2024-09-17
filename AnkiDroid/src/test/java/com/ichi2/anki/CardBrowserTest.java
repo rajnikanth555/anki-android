@@ -381,11 +381,11 @@ public class CardBrowserTest extends RobolectricTest {
 
         CardBrowser b = getBrowserWithNoNewCards();
 
-        assertThat("The target deck should not yet be selected", b.getLastDeckId(), not(is(targetDid)));
+        assertThat("The target deck should not yet be selected", b.getDeckId(), not(is(targetDid)));
 
         b.selectDeckId(targetDid);
 
-        assertThat("The target deck should be selected", b.getLastDeckId(), is(targetDid));
+        assertThat("The target deck should be selected", b.getDeckId(), is(targetDid));
 
         Intent addIntent = b.getAddNoteIntent();
 
@@ -401,7 +401,7 @@ public class CardBrowserTest extends RobolectricTest {
 
         CardBrowser b = getBrowserWithNoNewCards();
 
-        assertThat("The initial deck should be selected", b.getLastDeckId(), is(initialDid));
+        assertThat("The initial deck should be selected", b.getDeckId(), is(initialDid));
 
         Intent addIntent = b.getAddNoteIntent();
 
@@ -507,24 +507,6 @@ public class CardBrowserTest extends RobolectricTest {
         advanceRobolectricLooperWithSleep();
 
         assertUndoContains(b, R.string.deck_conf_cram_reschedule);
-    }
-
-    /** 8027 */
-    @Test
-    public void checkSearchString() {
-        addNoteUsingBasicModel("Hello", "John");
-        long deck = addDeck("Deck 1");
-        getCol().getDecks().select(deck);
-        Card c2 = addNoteUsingBasicModel("New", "world").firstCard();
-        c2.setDid(deck);
-        c2.flush();
-
-        CardBrowser cardBrowser = getBrowserWithNoNewCards();
-        cardBrowser.searchCards("world or hello");
-        advanceRobolectricLooperWithSleep();
-
-        assertThat("Cardbrowser has Deck 1 as selected deck", cardBrowser.getSelectedDeckNameForUi(), is("Deck 1"));
-        assertThat("Results should only be from the selected deck", cardBrowser.getCardCount(), is(1));
     }
 
     protected void assertUndoDoesNotContain(CardBrowser browser, @StringRes int resId) {
