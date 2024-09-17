@@ -128,13 +128,12 @@
     <string name="notification_minimum_cards_due_vibrate">Vibrate</string>
     <string name="notification_minimum_cards_due_blink">Blink light</string>
     <string name="timeout_answer_text">Automatic display answer</string>
+    <string name="timeout_answer">Timeout answer</string>
     <string name="timeout_answer_summ">Show answer automatically without user input. Delay includes time for automatically played audio files.</string>
     <string name="timeout_answer_seconds">Time to show answer</string>
     <string name="timeout_answer_seconds_summ" comment="The time to wait (in seconds) in the reviewer before automatically showing the next question or answer">XXX s</string>
     <string name="timeout_question_seconds">Time to show next question</string>
     <string name="select_locale_title">Select language</string>
-    <string name="software_render">Disable card hardware render</string>
-    <string name="software_render_summ">Hardware render is faster but may have problems, specifically on Android 8/8.1. If you cannot see parts of the card review user interface, try this setting.</string>
     <string name="safe_display">Safe display mode</string>
     <string name="safe_display_summ">Disable all animations and use safer method for drawing cards. E-ink devices may require this.</string>
     <string name="disable_extended_text_ui">Disable Single-Field Edit Mode</string>
@@ -157,7 +156,7 @@
     <string name="time_limit">Timebox time limit</string>
     <string name="time_limit_summ">XXX min</string>
     <string name="new_timezone">New timezone handling</string>
-    <string name="day_offset_with_description">Start of next day (0 is midnight, 23 is 11PM)</string>
+    <string name="day_offset">Start of next day</string>
     <string name="day_offset_summ">XXX hours past midnight</string>
     <string name="sched_ver">Experimental V2 scheduler</string>
     <string name="sched_ver_summ">Enable the experimental scheduler. Forces changes in one direction on next sync</string>
