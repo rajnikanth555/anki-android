@@ -133,6 +133,8 @@ public class Media {
         if (!fd.exists()) {
             if (!fd.mkdir()) {
                 Timber.e("Cannot create media directory: %s", mDir);
+                    
+                  System.out.println("source code added");  
             }
         }
         // change database
