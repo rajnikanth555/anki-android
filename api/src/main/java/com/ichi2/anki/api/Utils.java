@@ -37,7 +37,7 @@ class Utils {
     private static final Pattern imgPattern = Pattern.compile("<img src=[\"']?([^\"'>]+)[\"']? ?/?>");
     private static final Pattern htmlEntitiesPattern = Pattern.compile("&#?\\w+;");
     private static final String FIELD_SEPARATOR = Character.toString('\u001f');
-
+    private static final String FIELD_SEPARATOR1 = Character.toString('\u001f');
 
     static String joinFields(String[] list) {
         int i=0;
