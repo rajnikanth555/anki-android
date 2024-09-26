@@ -15,7 +15,6 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
 import androidx.browser.customtabs.CustomTabColorSchemeParams;
 import androidx.browser.customtabs.CustomTabsIntent;
@@ -45,15 +44,14 @@ import com.ichi2.compat.customtabs.CustomTabActivityHelper;
 import com.ichi2.compat.customtabs.CustomTabsFallback;
 import com.ichi2.compat.customtabs.CustomTabsHelper;
 import com.ichi2.libanki.Collection;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 import com.ichi2.themes.Themes;
 import com.ichi2.utils.AdaptionUtil;
 import com.ichi2.utils.AndroidUiUtils;
 
 import timber.log.Timber;
 
-import static androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_DARK;
-import static androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_LIGHT;
-import static androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_SYSTEM;
 import static com.ichi2.anim.ActivityTransitionAnimation.Direction.*;
 import static com.ichi2.anim.ActivityTransitionAnimation.Direction;
 
@@ -162,8 +160,7 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
 
 
     public boolean animationDisabled() {
-        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(this);
-        return preferences.getBoolean("safeDisplay", false);
+        return Prefs.fromContext(this).getBoolean(PreferenceKeys.SafeDisplay);
     }
 
 
@@ -238,7 +235,6 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
         try {
             super.startActivityForResult(intent, requestCode);
         } catch (ActivityNotFoundException e) {
-            Timber.w(e);
             UIUtils.showSimpleSnackbar(this, R.string.activity_start_failed,true);
         }
     }
@@ -378,40 +374,19 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
             return;
         }
 
-        int toolbarColor = Themes.getColorFromAttr(this, R.attr.customTabToolbarColor);
-        int navBarColor = Themes.getColorFromAttr(this, R.attr.customTabNavBarColor);
-
-        CustomTabColorSchemeParams colorSchemeParams =
-                new CustomTabColorSchemeParams.Builder()
-                        .setToolbarColor(toolbarColor)
-                        .setNavigationBarColor(navBarColor)
-                        .build();
-
         CustomTabActivityHelper helper = getCustomTabActivityHelper();
-        CustomTabsIntent.Builder builder =
-                new CustomTabsIntent.Builder(helper.getSession())
-                        .setShowTitle(true)
-                        .setStartAnimations(this, R.anim.slide_right_in, R.anim.slide_left_out)
-                        .setExitAnimations(this, R.anim.slide_left_in, R.anim.slide_right_out)
-                        .setCloseButtonIcon(BitmapFactory.decodeResource(this.getResources(), R.drawable.ic_back_arrow_custom_tab))
-                        .setColorScheme(getColorScheme())
-                        .setDefaultColorSchemeParams(colorSchemeParams);
-
+        CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder(helper.getSession());
+        CustomTabColorSchemeParams colorScheme =
+                new CustomTabColorSchemeParams.Builder()
+                        .setToolbarColor(ContextCompat.getColor(this, R.color.material_light_blue_500))
+                        .build();
+        builder.setDefaultColorSchemeParams(colorScheme).setShowTitle(true);
+        builder.setStartAnimations(this, R.anim.slide_right_in, R.anim.slide_left_out);
+        builder.setExitAnimations(this, R.anim.slide_left_in, R.anim.slide_right_out);
+        builder.setCloseButtonIcon(BitmapFactory.decodeResource(this.getResources(), R.drawable.ic_arrow_back_white_24dp));
         CustomTabsIntent customTabsIntent = builder.build();
         CustomTabsHelper.addKeepAliveExtra(this, customTabsIntent.intent);
         CustomTabActivityHelper.openCustomTab(this, customTabsIntent, url, new CustomTabsFallback());
-    }
-
-
-    private int getColorScheme() {
-        SharedPreferences prefs = AnkiDroidApp.getSharedPrefs(this);
-        if (AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) {
-            return COLOR_SCHEME_SYSTEM;
-        } else if (prefs.getBoolean("invertedColors", false)) {
-            return COLOR_SCHEME_DARK;
-        } else {
-            return COLOR_SCHEME_LIGHT;
-        }
     }
 
     public CustomTabActivityHelper getCustomTabActivityHelper() {
@@ -469,7 +444,6 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
         try {
             showDialogFragment(newFragment);
         } catch (IllegalStateException e) {
-            Timber.w(e);
             // Store a persistent message to SharedPreferences instructing AnkiDroid to show dialog
             DialogHandler.storeMessage(newFragment.getDialogHandlerMessage());
             // Show a basic notification to the user in the notification bar in the meantime
@@ -517,9 +491,9 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
 
 
     public void showSimpleNotification(String title, String message, NotificationChannels.Channel channel) {
-        SharedPreferences prefs = AnkiDroidApp.getSharedPrefs(this);
+        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(this);
         // Show a notification unless all notifications have been totally disabled
-        if (Integer.parseInt(prefs.getString("minimumCardsDueForNotification", "0")) <= Preferences.PENDING_NOTIFICATIONS_ONLY) {
+        if (Integer.parseInt(preferences.getString("minimumCardsDueForNotification", "0")) <= Preferences.PENDING_NOTIFICATIONS_ONLY) {
             // Use the title as the ticker unless the title is simply "AnkiDroid"
             String ticker = title;
             if (title.equals(getResources().getString(R.string.app_name))) {
@@ -535,11 +509,13 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setTicker(ticker);
+
+            Prefs prefs = new Prefs(preferences);
             // Enable vibrate and blink if set in preferences
-            if (prefs.getBoolean("widgetVibrate", false)) {
+            if (prefs.getBoolean(PreferenceKeys.WidgetVibrate)) {
                 builder.setVibrate(new long[] { 1000, 1000, 1000});
             }
-            if (prefs.getBoolean("widgetBlink", false)) {
+            if (prefs.getBoolean(PreferenceKeys.WidgetBlink)) {
                 builder.setLights(Color.BLUE, 1000, 1000);
             }
             // Creates an explicit intent for an Activity in your app
@@ -605,7 +581,7 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
     }
 
     protected boolean showedActivityFailedScreen(Bundle savedInstanceState) {
-        if (AnkiDroidApp.isInitialized()) {
+        if (!AnkiDroidApp.isInitialized()) {
             return false;
         }
 
@@ -637,3 +613,4 @@ public class AnkiActivity extends AppCompatActivity implements SimpleMessageDial
         return true;
     }
 }
+

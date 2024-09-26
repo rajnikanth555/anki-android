@@ -15,6 +15,8 @@ import com.ichi2.anki.UIUtils;
 import com.ichi2.libanki.Collection;
 import com.ichi2.libanki.DeckConfig;
 import com.ichi2.libanki.utils.Time;
+import com.ichi2.preferences.PreferenceKeys;
+import com.ichi2.preferences.Prefs;
 import com.ichi2.utils.Permissions;
 
 import com.ichi2.utils.JSONObject;
@@ -67,10 +69,8 @@ public class BootService extends BroadcastReceiver {
         try {
             runnable.run();
         } catch (SecurityException ex) {
-            Timber.w(ex);
             error = R.string.boot_service_too_many_notifications;
         } catch (Exception e) {
-            Timber.w(e);
             error = R.string.boot_service_failed_to_schedule_notifications;
         }
         if (error != null) {
@@ -131,7 +131,7 @@ public class BootService extends BroadcastReceiver {
         }
 
         final Calendar calendar = time.calendar();
-        calendar.set(Calendar.HOUR_OF_DAY, sp.getInt("dayOffset", 0));
+        calendar.set(Calendar.HOUR_OF_DAY, Prefs.getInt(sp, PreferenceKeys.DayOffset));
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
         final PendingIntent notificationIntent =
