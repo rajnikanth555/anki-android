@@ -22,7 +22,6 @@
 package com.ichi2.anki;
 
 import android.Manifest;
-import android.animation.Animator;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -44,7 +43,6 @@ import android.os.ParcelFileDescriptor;
 import android.provider.Settings;
 
 import com.afollestad.materialdialogs.GravityEnum;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
 import androidx.annotation.NonNull;
@@ -86,6 +84,7 @@ import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.ichi2.anki.CollectionHelper.CollectionIntegrityStorageCheck;
+import com.ichi2.anki.InitialActivity.StartupFailure;
 import com.ichi2.anki.StudyOptionsFragment.StudyOptionsListener;
 import com.ichi2.anki.analytics.UsageAnalytics;
 import com.ichi2.anki.dialogs.AsyncDialogFragment;
@@ -174,7 +173,8 @@ public class DeckPicker extends NavigationDrawerActivity implements
     /**
      * Available options performed by other activities (request codes for onActivityResult())
      */
-    private static final int REQUEST_STORAGE_PERMISSION = 0;
+    @VisibleForTesting
+    static final int REQUEST_STORAGE_PERMISSION = 0;
     private static final int REQUEST_PATH_UPDATE = 1;
     public static final int REPORT_FEEDBACK = 4;
     private static final int LOG_IN_FOR_SYNC = 6;
@@ -525,40 +525,56 @@ public class DeckPicker extends NavigationDrawerActivity implements
         mReviewSummaryTextView = findViewById(R.id.today_stats_text_view);
 
         Timber.i("colOpen: %b", colOpen);
-        if (colOpen) {
-            // Show any necessary dialogs (e.g. changelog, special messages, etc)
-            showStartupScreensAndDialogs(preferences, 0);
-        } else {
-            // Show error dialogs
-            if (Permissions.hasStorageAccessPermission(this)) {
-                if (!AnkiDroidApp.isSdCardMounted()) {
-                    Timber.i("SD card not mounted");
-                    onSdCardNotMounted();
-                } else if (!CollectionHelper.isCurrentAnkiDroidDirAccessible(this)) {
-                    Timber.i("AnkiDroid directory inaccessible");
-                    Intent i = Preferences.getPreferenceSubscreenIntent(this, "com.ichi2.anki.prefs.advanced");
-                    startActivityForResultWithoutAnimation(i, REQUEST_PATH_UPDATE);
-                    Toast.makeText(this, R.string.directory_inaccessible, Toast.LENGTH_LONG).show();
-                } else if (isFutureAnkiDroidVersion()) {
-                    Timber.i("Displaying database versioning");
-                    showDatabaseErrorDialog(DatabaseErrorDialog.INCOMPATIBLE_DB_VERSION);
-                } else {
-                    Timber.i("Displaying database error");
-                    showDatabaseErrorDialog(DatabaseErrorDialog.DIALOG_LOAD_FAILED);
-                }
-            }
+        // if permission is denied, firstCollectionOpen() requests it and onRequestPermissionsResult continues execution
+        if (Permissions.hasStorageAccessPermission(this)) {
+            handleStartup(colOpen);
         }
+
 
         mShortAnimDuration = getResources().getInteger(android.R.integer.config_shortAnimTime);
     }
 
+    /** The first call in showing dialogs for startup - error or success */
+    private void handleStartup(boolean colOpen) {
+        // TODO: colOpen is not colIsOpen() if called from onCreate - we should fix this mismatch of terms
+        // or use the same variable if the semantics should have been equivalent
+        if (colOpen) {
+            // Show any necessary dialogs (e.g. changelog, special messages, etc)
+            SharedPreferences sharedPrefs = AnkiDroidApp.getSharedPrefs(this);
+            showStartupScreensAndDialogs(sharedPrefs, 0);
+        } else {
+            // Show error dialogs
+            StartupFailure failure = InitialActivity.getStartupFailureType(this);
+            handleStartupFailure(failure);
+        }
+    }
 
-    private boolean isFutureAnkiDroidVersion() {
-        try {
-            return CollectionHelper.isFutureAnkiDroidVersion(this);
-        } catch (Exception e) {
-            Timber.w(e, "Could not determine if future AnkiDroid version - assuming not");
-            return false;
+
+    @VisibleForTesting
+    void handleStartupFailure(StartupFailure failure) {
+        switch (failure) {
+            case SD_CARD_NOT_MOUNTED:
+                Timber.i("SD card not mounted");
+                onSdCardNotMounted();
+                break;
+            case DIRECTORY_NOT_ACCESSIBLE:
+                Timber.i("AnkiDroid directory inaccessible");
+                Intent i = Preferences.getPreferenceSubscreenIntent(this, "com.ichi2.anki.prefs.advanced");
+                startActivityForResultWithoutAnimation(i, REQUEST_PATH_UPDATE);
+                Toast.makeText(this, R.string.directory_inaccessible, Toast.LENGTH_LONG).show();
+                break;
+            case FUTURE_ANKIDROID_VERSION:
+                Timber.i("Displaying database versioning");
+                showDatabaseErrorDialog(DatabaseErrorDialog.INCOMPATIBLE_DB_VERSION);
+                break;
+            case DATABASE_LOCKED:
+                Timber.i("Displaying database locked error");
+                showDatabaseErrorDialog(DatabaseErrorDialog.DIALOG_DB_LOCKED);
+                break;
+            case DB_ERROR:
+            default:
+                Timber.i("Displaying database error");
+                showDatabaseErrorDialog(DatabaseErrorDialog.DIALOG_LOAD_FAILED);
         }
     }
 
@@ -921,7 +937,7 @@ public class DeckPicker extends NavigationDrawerActivity implements
         if (requestCode == REQUEST_STORAGE_PERMISSION && permissions.length == 1) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 invalidateOptionsMenu();
-                showStartupScreensAndDialogs(AnkiDroidApp.getSharedPrefs(this), 0);
+                handleStartup(colIsOpen());
             } else {
                 // User denied access to file storage  so show error toast and display "App Info"
                 Toast.makeText(this, R.string.startup_no_storage_permission, Toast.LENGTH_LONG).show();
