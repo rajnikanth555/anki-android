@@ -19,6 +19,11 @@ package com.ichi2.utils;
 import android.app.UiModeManager;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+
+import androidx.annotation.NonNull;
 
 import static androidx.core.content.ContextCompat.getSystemService;
 
@@ -31,4 +36,14 @@ public class AndroidUiUtils {
         return uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
     }
 
+    /**
+     * This method is used for setting the focus on an EditText and opening the keyboard for EditText
+     * which are used in dialogs.
+     * @param view The EditText which requires the focus to be set.
+     * @param window The window where the view is present.
+     */
+    public static void setFocusAndOpenKeyboard(View view, @NonNull Window window) {
+        view.requestFocus();
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+    }
 }
