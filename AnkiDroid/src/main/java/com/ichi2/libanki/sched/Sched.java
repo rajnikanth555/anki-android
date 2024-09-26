@@ -54,8 +54,6 @@ import timber.log.Timber;
 
 
 import static com.ichi2.async.CancelListener.isCancelled;
-import static com.ichi2.libanki.Consts.DECK_DYN;
-import static com.ichi2.libanki.Consts.DECK_STD;
 import static com.ichi2.libanki.sched.Counts.Queue.*;
 import static com.ichi2.libanki.sched.Counts.Queue;
 import static com.ichi2.libanki.stats.Stats.SECONDS_PER_DAY;
@@ -318,7 +316,7 @@ public class Sched extends SchedV2 {
         if (_preloadLrnCard(true)) {
             return new CardQueue<?>[]{mLrnQueue};
         }
-        return new CardQueue<?>[]{};
+        return new CardQueue[]{};
     }
     /**
      * Learning queues *********************************************************** ************************************
@@ -328,18 +326,21 @@ public class Sched extends SchedV2 {
     protected void _resetLrnCount() {
         _resetLrnCount(null);
     }
+
     protected void _resetLrnCount(@Nullable CancelListener cancelListener) {
         // sub-day
-        mLrnCount = mCol.getDb().queryScalar(
+        int lrnCount = mCol.getDb().queryScalar(
                 "SELECT sum(left / 1000) FROM (SELECT left FROM cards WHERE did IN " + _deckLimit()
                 + " AND queue = " + Consts.QUEUE_TYPE_LRN + " AND due < ? and id != ? LIMIT ?)",
                 mDayCutoff, currentCardId(), mReportLimit);
         if (isCancelled(cancelListener)) return;
         // day
-        mLrnCount += mCol.getDb().queryScalar(
+        lrnCount += mCol.getDb().queryScalar(
                 "SELECT count() FROM cards WHERE did IN " + _deckLimit() + " AND queue = " + Consts.QUEUE_TYPE_DAY_LEARN_RELEARN + " AND due <= ? "+
                         "AND id != ? LIMIT ?",
                 mToday, currentCardId(), mReportLimit);
+
+        mLrnCount = lrnCount;
     }
 
     @Override
@@ -368,7 +369,6 @@ public class Sched extends SchedV2 {
          * _getLrnCard which did remove the card from the queue. _sortIntoLrn will add the card back to the queue if
          * required when the card is reviewed.
          */
-        mLrnQueue.setFilled();
         try (Cursor cur = mCol.getDb().query(
                            "SELECT due, id FROM cards WHERE did IN " + _deckLimit() + " AND queue = " + Consts.QUEUE_TYPE_LRN + " AND due < ? AND id != ? LIMIT ?",
                            mDayCutoff, currentCardId(), mReportLimit)) {
@@ -627,7 +627,7 @@ public class Sched extends SchedV2 {
      * */
     @Override
     protected int _deckRevLimitSingle(@NonNull Deck d, boolean considerCurrentCard) {
-        if (d.isDyn()) {
+        if (d.getInt("dyn") != 0) {
             return mReportLimit;
         }
         long did = d.getLong("id");
@@ -709,7 +709,7 @@ public class Sched extends SchedV2 {
                 }
                 if (!mRevQueue.isEmpty()) {
                     // ordering
-                    if (mCol.getDecks().get(did).isDyn()) {
+                    if (mCol.getDecks().get(did).getInt("dyn") != 0) {
                         // dynamic decks need due order preserved
                         // Note: libanki reverses mRevQueue and returns the last element in _getRevCard().
                         // AnkiDroid differs by leaving the queue intact and returning the *first* element
@@ -901,7 +901,7 @@ public class Sched extends SchedV2 {
             did = mCol.getDecks().selected();
         }
         Deck deck = mCol.getDecks().get(did);
-        if (deck.isStd()) {
+        if (deck.getInt("dyn") == 0) {
             Timber.e("error: deck is not a filtered deck");
             return;
         }
@@ -1081,7 +1081,7 @@ public class Sched extends SchedV2 {
 
     private boolean _resched(@NonNull Card card) {
         DeckConfig conf = _cardConf(card);
-        if (conf.getInt("dyn") == DECK_STD) {
+        if (conf.getInt("dyn") == 0) {
             return true;
         }
         return conf.getBoolean("resched");

@@ -27,7 +27,7 @@
     android:summary="@string/pref_cat_advanced_summ"
     android:key="pref_screen_advanced">
         <EditTextPreference
-            android:defaultValue="/sdcard/AnkiDroid"
+            android:defaultValue="/sdcard/AnkiDroid_xml"
             android:key="deckPath"
             android:summary="@string/preference_summary_literal"
             android:title="@string/col_path" />
@@ -54,11 +54,6 @@
             android:title="@string/pref_cat_workarounds" >
             <CheckBoxPreference
                 android:defaultValue="false"
-                android:key="softwareRender"
-                android:summary="@string/software_render_summ"
-                android:title="@string/software_render" />
-            <CheckBoxPreference
-                android:defaultValue="false"
                 android:key="safeDisplay"
                 android:summary="@string/safe_display_summ"
                 android:title="@string/safe_display" />
@@ -67,25 +62,17 @@
                 android:key="useInputTag"
                 android:summary="@string/use_input_tag_summ"
                 android:title="@string/use_input_tag" />
+            <CheckBoxPreference
+                android:defaultValue="false"
+                android:key="fixHebrewText"
+                android:summary="@string/fix_hebrew_text_summ"
+                android:title="@string/fix_hebrew_text" />
             <!-- Workaround for #5533 -->
             <CheckBoxPreference
                 android:defaultValue="false"
                 android:key="disableExtendedTextUi"
                 android:summary="@string/disable_extended_text_ui_summ"
                 android:title="@string/disable_extended_text_ui" />
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="noteEditorNewlineReplace"
-                android:summary="@string/note_editor_replace_newlines_summ"
-                android:title="@string/note_editor_replace_newlines"
-                />
-            <!-- #7896 - Workaround for old webviews which could not render some characters in a <code> block
-            due to problems with the default monospace font handling -->
-            <CheckBoxPreference
-                android:defaultValue="false"
-                android:key="noCodeFormatting"
-                android:summary="@string/no_code_formatting_summ"
-                android:title="@string/no_code_formatting" />
         </PreferenceCategory>
         <PreferenceCategory
             android:key="category_plugins"
@@ -144,16 +131,6 @@
                 android:key="html_javascript_debugging"
                 android:summary="@string/html_javascript_debugging_summ"
                 android:title="@string/html_javascript_debugging"/>
-            <!-- Title and summary are variable, handled in string:
-            card_browser_enable_external_context_menu -->
-            <CheckBoxPreference
-                android:id="@+id/card_browser_external_context_menu"
-                android:defaultValue="false"
-                android:key="card_browser_enable_external_context_menu"/>
-            <CheckBoxPreference
-                android:id="@+id/anki_card_external_context_menu"
-                android:defaultValue="true"
-                android:key="anki_card_enable_external_context_menu"/>
         </PreferenceCategory>
 
 
