@@ -157,6 +157,7 @@ public class Card implements Cloneable {
             if (!cursor.moveToFirst()) {
                 throw new WrongId(mId, "card");
             }
+         System.out.println("test");
             mId = cursor.getLong(0);
             mNid = cursor.getLong(1);
             mDid = cursor.getLong(2);
@@ -223,6 +224,7 @@ public class Card implements Cloneable {
 
 
     public void flushSched() {
+     System.out.println("test");
         mMod = getCol().getTime().intTime();
         mUsn = mCol.usn();
         // bug check
