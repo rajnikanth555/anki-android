@@ -111,7 +111,7 @@ import static com.ichi2.libanki.stats.Stats.SECONDS_PER_DAY;
 import static com.ichi2.anim.ActivityTransitionAnimation.Direction.*;
 
 public class CardBrowser extends NavigationDrawerActivity implements
-        DeckDropDownAdapter.SubtitleListener, TagsDialog.TagsDialogListener {
+        DeckDropDownAdapter.SubtitleListener {
 
     enum Column {
         QUESTION,
@@ -666,28 +666,16 @@ public class CardBrowser extends NavigationDrawerActivity implements
             }
         });
         mCardsListView.setOnItemLongClickListener((adapterView, view, position, id) -> {
-            if (mInMultiSelectMode) {
-                for (int i = Math.min(mLastSelectedPosition, position); i <= Math.max(mLastSelectedPosition, position); i++) {
-                    // getting the view of particular view and then checking whether it's already checked or not
-                    View childView = mCardsListView.getChildAt(i);
-                    CheckBox cb = childView.findViewById(R.id.card_checkbox);
-                    if (!cb.isChecked()) {
-                        cb.toggle();
-                        onCheck(i, childView);
-                    }
-                }
-            } else {
-                mLastSelectedPosition = position;
-                saveScrollingState(position);
-                loadMultiSelectMode();
+            mLastSelectedPosition = position;
+            saveScrollingState(position);
+            loadMultiSelectMode();
 
-                // click on whole cell triggers select
-                CheckBox cb = view.findViewById(R.id.card_checkbox);
-                cb.toggle();
-                onCheck(position, view);
-                recenterListView(view);
-                mCardsAdapter.notifyDataSetChanged();
-            }
+            // click on whole cell triggers select
+            CheckBox cb = view.findViewById(R.id.card_checkbox);
+            cb.toggle();
+            onCheck(position, view);
+            recenterListView(view);
+            mCardsAdapter.notifyDataSetChanged();
             return true;
         });
 
@@ -1192,7 +1180,12 @@ public class CardBrowser extends NavigationDrawerActivity implements
                 startActivityWithAnimation(intent, FADE);
             }
             return true;
+        } else if (itemId == R.id.action_limited_search) {
+            boolean wasChecked =  mActionBarMenu.findItem(R.id.action_limited_search).isChecked();
+            mActionBarMenu.findItem(R.id.action_limited_search).setChecked(!wasChecked);
+            searchCards();
         }
+
         return super.onOptionsItemSelected(item);
     }
 
@@ -1335,7 +1328,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         if (did != null && did > 0) {
             intent.putExtra(NoteEditor.EXTRA_DID, (long) did);
         }
-        intent.putExtra(NoteEditor.EXTRA_TEXT_FROM_SEARCH_VIEW, mSearchTerms);
         return intent;
     }
 
@@ -1409,7 +1401,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
 
     private void showTagsDialog() {
         TagsDialog dialog = TagsDialog.newInstance(
-                TagsDialog.DialogType.FILTER_BY_TAG, new ArrayList<>(0), new ArrayList<>(getCol().getTags().all()));
+                TagsDialog.TYPE_FILTER_BY_TAG, new ArrayList<>(0), new ArrayList<>(getCol().getTags().all()));
+        dialog.setTagsDialogListener(this::filterByTag);
         showDialogFragment(dialog);
     }
 
@@ -1456,8 +1449,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         savedInstanceState.putInt("mOldCardTopOffset", mOldCardTopOffset);
         savedInstanceState.putBoolean("mShouldRestoreScroll", mShouldRestoreScroll);
         savedInstanceState.putBoolean("mPostAutoScroll", mPostAutoScroll);
-        savedInstanceState.putInt("mLastSelectedPosition", mLastSelectedPosition);
-        savedInstanceState.putBoolean("mInMultiSelectMode", mInMultiSelectMode);
         super.onSaveInstanceState(savedInstanceState);
     }
 
@@ -1469,8 +1460,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         mOldCardTopOffset = savedInstanceState.getInt("mOldCardTopOffset");
         mShouldRestoreScroll = savedInstanceState.getBoolean("mShouldRestoreScroll");
         mPostAutoScroll = savedInstanceState.getBoolean("mPostAutoScroll");
-        mLastSelectedPosition = savedInstanceState.getInt("mLastSelectedPosition");
-        mInMultiSelectMode = savedInstanceState.getBoolean("mInMultiSelectMode");
         searchCards();
     }
 
@@ -1492,6 +1481,13 @@ public class CardBrowser extends NavigationDrawerActivity implements
         // cancel the previous search & render tasks if still running
         invalidate();
         String searchText;
+        boolean singleCardByNote;
+        try{
+            singleCardByNote = mActionBarMenu.findItem(R.id.action_limited_search).isChecked();
+        } catch ( NullPointerException e) {
+            Timber.e(e);
+            singleCardByNote = false;
+        }
         if (mSearchTerms == null) {
             mSearchTerms = "";
         }
@@ -1500,12 +1496,9 @@ public class CardBrowser extends NavigationDrawerActivity implements
             mSearchItem.expandActionView();
         }
         if (mSearchTerms.contains("deck:")) {
-            searchText = "(" + mSearchTerms + ")";
+            searchText = mSearchTerms;
         } else {
-            if (!"".equals(mSearchTerms))
-                searchText = mRestrictOnDeck + "(" + mSearchTerms + ")";
-            else
-                searchText = mRestrictOnDeck;
+            searchText = mRestrictOnDeck + mSearchTerms;
         }
         if (colIsOpen() && mCardsAdapter!= null) {
             // clear the existing card list
@@ -1519,7 +1512,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
                             (mOrder != CARD_ORDER_NONE),
                             numCardsToRender,
                             mColumn1Index,
-                            mColumn2Index),
+                            mColumn2Index,
+                            singleCardByNote),
                     mSearchCardsHandler
             );
         }
@@ -1582,9 +1576,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
     }
 
 
-    @Override
-    public void onSelectedTags(List<String> selectedTags, int option) {
-        //TODO: Duplication between here and CustomStudyDialog:onSelectedTags
+    private void filterByTag(List<String> selectedTags, int option) {
+        //TODO: Duplication between here and CustomStudyDialog:customStudyFromTags
         mSearchView.setQuery("", false);
         String tags = selectedTags.toString();
         mSearchView.setQueryHint(getResources().getString(R.string.CardEditorTags,
@@ -2878,7 +2871,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
 
     @VisibleForTesting
     void filterByTag(String... tags) {
-        onSelectedTags(Arrays.asList(tags), 0);
+        filterByTag(Arrays.asList(tags), 0);
     }
 
     @VisibleForTesting
@@ -2891,11 +2884,5 @@ public class CardBrowser extends NavigationDrawerActivity implements
     void replaceSelectionWith(int[] positions) {
         mCheckedCards.clear();
         checkCardsAtPositions(positions);
-    }
-
-    @VisibleForTesting
-    void searchCards(String searchQuery) {
-        mSearchTerms = searchQuery;
-        searchCards();
     }
 }

@@ -76,40 +76,41 @@ public class Finder {
 
     /** Return a list of card ids for QUERY */
     @CheckResult
-    public List<Long> findCards(String query, String _order) {
-        return _findCards(query, _order);
+    public List<Long> findCards(String query, String _order, boolean singleCardByNote) {
+        return _findCards(query, _order, singleCardByNote);
     }
 
     @CheckResult
-    public List<Long> findCards(String query, boolean _order) {
-        return findCards(query, _order, null);
+    public List<Long> findCards(String query, boolean _order, boolean singleCardByNote) {
+        return findCards(query, _order, null, singleCardByNote);
     }
 
     @CheckResult
-    public List<Long> findCards(String query, boolean _order, CollectionTask.PartialSearch task) {
-        return _findCards(query, _order, task);
+    public List<Long> findCards(String query, boolean _order, CollectionTask.PartialSearch task, boolean singleCardByNote) {
+        return _findCards(query, _order, task, singleCardByNote);
     }
 
 
     @CheckResult
-    private List<Long> _findCards(String query, Object _order) {
-        return _findCards(query, _order, null);
+    private List<Long> _findCards(String query, Object _order, boolean singleCardByNote) {
+        return _findCards(query, _order, null, singleCardByNote);
     }
 
     @CheckResult
-    private List<Long> _findCards(String query, Object _order, CollectionTask.PartialSearch task) {
+    private List<Long> _findCards(String query, Object _order, CollectionTask.PartialSearch task, boolean singleCardByNote) {
         String[] tokens = _tokenize(query);
         Pair<String, String[]> res1 = _where(tokens);
         String preds = res1.first;
         String[] args = res1.second;
         List<Long> res = new ArrayList<>();
+        HashSet<Long> nids = new HashSet<>();
         if (preds == null) {
             return res;
         }
         Pair<String, Boolean> res2 = _order instanceof Boolean ? _order((Boolean) _order) : _order((String) _order);
         String order = res2.first;
         boolean rev = res2.second;
-        String sql = _query(preds, order);
+        String sql = _query(preds, order, singleCardByNote);
         Timber.v("Search query '%s' is compiled as '%s'.", query, sql);
         boolean sendProgress = task != null;
         try (Cursor cur = mCol.getDb().getDatabase().query(sql, args)) {
@@ -125,7 +126,6 @@ public class Finder {
             }
         } catch (SQLException e) {
             // invalid grouping
-            Timber.w(e);
             return new ArrayList<>(0);
         }
         if (rev) {
@@ -133,7 +133,6 @@ public class Finder {
         }
         return res;
     }
-
 
     public List<Long> findNotes(String query) {
         String[] tokens = _tokenize(query);
@@ -155,7 +154,6 @@ public class Finder {
                 res.add(cur.getLong(0));
             }
         } catch (SQLException e) {
-            Timber.w(e);
             // invalid grouping
             return new ArrayList<>(0);
         }
@@ -372,13 +370,14 @@ public class Finder {
      * @param order A part of a query, ordering element of table Card, with c a card, n its note
      * @return A query to return all card ids satifying the predicate and in the given order
      */
-    private static String _query(String preds, String order) {
+    private static String _query(String preds, String order, boolean singleCardByNote) {
         // can we skip the note table?
         String sql;
+        String select = singleCardByNote ? "min(c.id)": "c.id";
         if (!preds.contains("n.") && !order.contains("n.")) {
-            sql = "select c.id from cards c where ";
+            sql = "select "+select+" from cards c where ";
         } else {
-            sql = "select c.id from cards c, notes n where c.nid=n.id and ";
+            sql = "select "+select+" from cards c, notes n where c.nid=n.id and ";
         }
         // combine with preds
         if (!TextUtils.isEmpty(preds)) {
@@ -386,13 +385,15 @@ public class Finder {
         } else {
             sql += "1";
         }
+        if(singleCardByNote){
+            sql += " group by c.nid";
+        }
         // order
         if (!TextUtils.isEmpty(order)) {
             sql += " " + order;
         }
         return sql;
     }
-
 
     /**
      * Ordering
@@ -533,7 +534,6 @@ public class Finder {
         try {
             days = Integer.parseInt(r[0]);
         } catch (NumberFormatException e) {
-            Timber.w(e);
             return null;
         }
         days = Math.min(days, 31);
@@ -555,7 +555,6 @@ public class Finder {
         try {
             days = Integer.parseInt(val);
         } catch (NumberFormatException e) {
-            Timber.w(e);
             return null;
         }
         long cutoff = (mCol.getSched().getDayCutoff() - SECONDS_PER_DAY * days) * 1000;
@@ -582,7 +581,6 @@ public class Finder {
                 val = Integer.parseInt(sval);
             }
         } catch (NumberFormatException e) {
-            Timber.w(e);
             return null;
         }
         // is prop valid?
@@ -711,7 +709,6 @@ public class Finder {
         try {
             num = Integer.parseInt(val) - 1;
         } catch (NumberFormatException e) {
-            Timber.w(e);
             num = null;
         }
         if (num != null) {

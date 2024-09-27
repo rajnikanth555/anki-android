@@ -80,13 +80,13 @@ import java.util.regex.Pattern;
 import androidx.annotation.CheckResult;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import timber.log.Timber;
 
 import static com.ichi2.async.CancelListener.isCancelled;
+import static com.ichi2.libanki.Collection.DismissType.REVIEW;
 import static com.ichi2.libanki.Consts.DECK_DYN;
 
 // Anki maintains a cache of used tags so it can quickly present a list of tags
@@ -98,7 +98,7 @@ import static com.ichi2.libanki.Consts.DECK_DYN;
 @SuppressWarnings({"PMD.ExcessiveClassLength", "PMD.AvoidThrowingRawExceptionTypes","PMD.AvoidReassigningParameters",
         "PMD.NPathComplexity","PMD.MethodNamingConventions","PMD.AvoidBranchingStatementAsLastInLoop",
         "PMD.SwitchStmtsShouldHaveDefault","PMD.CollapsibleIfStatements","PMD.EmptyIfStmt","PMD.ExcessiveMethodLength"})
-public class Collection implements CollectionGetter {
+public class Collection {
 
     private final Context mContext;
 
@@ -153,6 +153,38 @@ public class Collection implements CollectionGetter {
             // other config
             "'curModel': null, " + "'nextPos': 1, " + "'sortType': \"noteFld\", "
             + "'sortBackwards': False, 'addToCur': True }"; // add new to currently selected deck?
+
+    public enum DismissType {
+        REVIEW(R.string.undo_action_review),
+        BURY_CARD(R.string.menu_bury_card),
+        BURY_NOTE(R.string.menu_bury_note),
+        SUSPEND_CARD(R.string.menu_suspend_card),
+        SUSPEND_CARD_MULTI(R.string.menu_suspend_card),
+        UNSUSPEND_CARD_MULTI(R.string.card_browser_unsuspend_card),
+        SUSPEND_NOTE(R.string.menu_suspend_note),
+        DELETE_NOTE(R.string.menu_delete_note),
+        DELETE_NOTE_MULTI(R.string.card_browser_delete_card),
+        CHANGE_DECK_MULTI(R.string.undo_action_change_deck_multi),
+        MARK_NOTE_MULTI(R.string.card_browser_mark_card),
+        UNMARK_NOTE_MULTI(R.string.card_browser_unmark_card),
+        FLAG(R.string.menu_flag),
+        REPOSITION_CARDS(R.string.card_editor_reposition_card),
+        RESCHEDULE_CARDS(R.string.card_editor_reschedule_card),
+        RESET_CARDS(R.string.card_editor_reset_card);
+
+        private final int mUndoNameId;
+
+        DismissType(int undoNameId) {
+            this.mUndoNameId = undoNameId;
+        }
+
+        private Locale getLocale(Resources resources) {
+            return LanguageUtil.getLocaleCompat(resources);
+        }
+        public String getString(Resources res) {
+            return res.getString(mUndoNameId).toLowerCase(getLocale(res));
+        }
+    }
 
     private static final int UNDO_SIZE_MAX = 20;
 
@@ -298,8 +330,10 @@ public class Collection implements CollectionGetter {
         // We have the ability to look into our sqlite implementation on Android and use it's value
         // as a ceiling. Try it, with a reasonable fallback in case of failure
         SupportSQLiteDatabase db = mDb.getDatabase();
-        String db_name = (db instanceof DatabaseChangeDecorator) ? ((DatabaseChangeDecorator) db).getWrapped().getClass().getName() : null;
-
+        if (! (db instanceof DatabaseChangeDecorator)) {
+            return sChunk;
+        }
+        String db_name = ((DatabaseChangeDecorator) db).getWrapped().getClass().getName();
         if ("io.requery.android.database.sqlite.SQLiteDatabase".equals(db_name)) {
             try {
                 Field cursorWindowSize = io.requery.android.database.CursorWindow.class.getDeclaredField("sDefaultCursorWindowSize");
@@ -317,7 +351,6 @@ public class Collection implements CollectionGetter {
         }
 
         // reduce the actual size a little bit.
-        // In case db is not an instance of DatabaseChangeDecorator, sChunk evaluated on default window size
         sChunk = (int) (sCursorWindowSize * 15. / 16.);
         return sChunk;
     }
@@ -429,7 +462,6 @@ public class Collection implements CollectionGetter {
                     DB.safeEndInTransaction(db);
                 }
             } catch (RuntimeException e) {
-                Timber.w(e);
                 AnkiDroidApp.sendExceptionReport(e, "closeDB");
             }
             if (!mServer) {
@@ -549,7 +581,6 @@ public class Collection implements CollectionGetter {
         try {
             id = mConf.getInt(type);
         } catch (JSONException e) {
-            Timber.w(e);
             id = 1;
         }
         mConf.put(type, id + 1);
@@ -627,22 +658,11 @@ public class Collection implements CollectionGetter {
 
 
     /**
-     * @param note A note to add if it generates card
-     * @return Number of card added.
+     * Add a note to the collection. Return number of new cards.
      */
     public int addNote(Note note) {
-        return addNote(note, Models.AllowEmpty.ONLY_CLOZE);
-    }
-
-    /**
-     * Add a note and cards to the collection. If allowEmpty, at least one card is generated.
-     * @param note  The note to add to the collection
-     * @param allowEmpty Whether we accept to add it even if it should generate no card. Useful to import note even if buggy
-     * @return Number of card added
-     */
-    public int addNote(Note note, Models.AllowEmpty allowEmpty) {
         // check we have card models available, then save
-        ArrayList<JSONObject> cms = findTemplates(note, allowEmpty);
+        ArrayList<JSONObject> cms = findTemplates(note);
         // Todo: upstream, we accept to add a not even if it generates no card. Should be ported to ankidroid
         if (cms.size() == 0) {
             return 0;
@@ -686,18 +706,13 @@ public class Collection implements CollectionGetter {
       Card creation ************************************************************ ***********************************
      */
 
-    public ArrayList<JSONObject> findTemplates(Note note) {
-        return findTemplates(note, Models.AllowEmpty.ONLY_CLOZE);
-    }
-
     /**
      * @param note A note
-     * @param allowEmpty whether we allow to have a card which is actually empty if it is necessary to return a non-empty list
      * @return (active), non-empty templates.
      */
-    public ArrayList<JSONObject> findTemplates(Note note, Models.AllowEmpty allowEmpty) {
+    public ArrayList<JSONObject> findTemplates(Note note) {
         Model model = note.model();
-        ArrayList<Integer> avail = Models.availOrds(model, note.getFields(), allowEmpty);
+        ArrayList<Integer> avail = Models.availOrds(model, note.getFields());
         return _tmplsFromOrds(model, avail);
     }
 
@@ -835,7 +850,7 @@ public class Collection implements CollectionGetter {
                 }
                 @NonNull Long nid = cur.getLong(0);
                 String flds = cur.getString(1);
-                ArrayList<Integer> avail = Models.availOrds(model, Utils.splitFields(flds), nodes, Models.AllowEmpty.TRUE);
+                ArrayList<Integer> avail = Models.availOrds(model, Utils.splitFields(flds), nodes);
                 if (task != null) {
                     task.doProgress(avail.size());
                 }
@@ -864,7 +879,6 @@ public class Collection implements CollectionGetter {
                                 did = ndid;
                             }
                         } catch (JSONException e) {
-                            Timber.w(e);
                             // do nothing
                         }
                         if (getDecks().isDyn(did)) {
@@ -1147,7 +1161,6 @@ public class Collection implements CollectionGetter {
             try {
                 html = ParsedNode.parse_inner(format).render(fields, "q".equals(type), getContext());
             } catch (TemplateError er) {
-                Timber.w(er);
                 html = er.message(getContext());
             }
             html = ChessFilter.fenToChessboard(html, getContext());
@@ -1203,22 +1216,22 @@ public class Collection implements CollectionGetter {
      */
 
     /** Return a list of card ids */
-    public List<Long> findCards(String search) {
-        return new Finder(this).findCards(search, null);
+    public List<Long> findCards(String search, boolean singleCardByNote) {
+        return new Finder(this).findCards(search, null, singleCardByNote);
     }
 
 
     /** Return a list of card ids */
-    public List<Long> findCards(String search, String order) {
-        return new Finder(this).findCards(search, order);
+    public List<Long> findCards(String search, String order, boolean singleCardByNote) {
+        return new Finder(this).findCards(search, order, singleCardByNote);
     }
 
-    public List<Long> findCards(String search, boolean order) {
-        return findCards(search, order, null);
+    public List<Long> findCards(String search, boolean order, boolean singleCardByNote) {
+        return findCards(search, order, null, singleCardByNote);
     }
 
-    public List<Long> findCards(String search, boolean order, CollectionTask.PartialSearch task) {
-        return new Finder(this).findCards(search, order, task);
+    public List<Long> findCards(String search, boolean order, CollectionTask.PartialSearch task, boolean singleCardByNote) {
+        return new Finder(this).findCards(search, order, task, singleCardByNote);
     }
 
 
@@ -1316,16 +1329,16 @@ public class Collection implements CollectionGetter {
 
     /** Undo menu item name, or "" if undo unavailable. */
     @VisibleForTesting
-    public @Nullable Undoable undoType() {
+    public @Nullable DismissType undoType() {
         if (mUndo.size() > 0) {
-            return mUndo.getLast();
+            return mUndo.getLast().getDismissType();
         }
         return null;
     }
     public String undoName(Resources res) {
-        Undoable type = undoType();
+        DismissType type = undoType();
         if (type != null) {
-            return type.name(res);
+            return type.getString(res);
         }
         return "";
     }
@@ -1337,40 +1350,28 @@ public class Collection implements CollectionGetter {
 
     public @Nullable Card undo() {
         Undoable lastUndo = mUndo.removeLast();
-        Timber.d("undo() of type %s", lastUndo.getClass());
+        Timber.d("undo() of type %s", lastUndo.getDismissType());
         return lastUndo.undo(this);
     }
 
     public void markUndo(@NonNull Undoable undo) {
-        Timber.d("markUndo() of type %s", undo.getClass());
+        Timber.d("markUndo() of type %s", undo.getDismissType());
         mUndo.add(undo);
         while (mUndo.size() > UNDO_SIZE_MAX) {
             mUndo.removeFirst();
         }
     }
 
-    @VisibleForTesting
-    public static class UndoReview extends Undoable {
-        private final boolean mWasLeech;
-        @NonNull private final Card mClonedCard;
-        public UndoReview(boolean wasLeech, @NonNull Card clonedCard) {
-            super(R.string.undo_action_review);
-            mClonedCard = clonedCard;
-            mWasLeech = wasLeech;
-        }
-
-        @NonNull
-        @Override
-        public Card undo(@NonNull Collection col) {
-            col.getSched().undoReview(mClonedCard, mWasLeech);
-            return mClonedCard;
-        }
-    }
-
     public void markReview(Card card) {
         boolean wasLeech = card.note().hasTag("leech");
         Card clonedCard = card.clone();
-        markUndo(new UndoReview(wasLeech, clonedCard));
+        Undoable undoableReview = new Undoable(REVIEW) {
+            public @Nullable Card undo(@NonNull Collection col) {
+                col.getSched().undoReview(clonedCard, wasLeech);
+                return clonedCard;
+            }
+        };
+        markUndo(undoableReview);
     }
 
     /**
@@ -1450,7 +1451,7 @@ public class Collection implements CollectionGetter {
             }
             mDb.getDatabase().setTransactionSuccessful();
         } catch (SQLiteDatabaseLockedException ex) {
-            Timber.w(ex,"doInBackgroundCheckDatabase - Database locked");
+            Timber.e("doInBackgroundCheckDatabase - Database locked");
             return result.markAsLocked();
         } catch (RuntimeException e) {
             Timber.e(e, "doInBackgroundCheckDatabase - RuntimeException on marking card");
@@ -1723,7 +1724,7 @@ public class Collection implements CollectionGetter {
                     fixCount++;
                 }
             } catch (NoSuchDeckException e) {
-                Timber.w(e, "Unable to find dynamic deck %d", id);
+                Timber.e("Unable to find dynamic deck %d", id);
             }
         }
         if (fixCount > 0) {
@@ -2264,14 +2265,5 @@ public class Collection implements CollectionGetter {
     @NonNull
     public Time getTime() {
         return mTime;
-    }
-
-
-    /**
-     * Allows a collection to be used as a CollectionGetter
-     * @return Itself.
-     */
-    public Collection getCol() {
-        return this;
     }
 }
