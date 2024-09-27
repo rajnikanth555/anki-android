@@ -789,7 +789,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
         Intent editCard = new Intent(this, NoteEditor.class);
         editCard.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_CARDBROWSER_EDIT);
         editCard.putExtra(NoteEditor.EXTRA_CARD_ID, sCardBrowserCard.getId());
-        startActivityForResultWithAnimation(editCard, EDIT_CARD, LEFT);
+        startActivityForResultWithAnimation(editCard, EDIT_CARD, START);
         //#6432 - FIXME - onCreateOptionsMenu crashes if receiving an activity result from edit card when in multiselect
         endMultiSelectMode();
     }
@@ -1340,7 +1340,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
     }
 
     private void addNoteFromCardBrowser() {
-        startActivityForResultWithAnimation(getAddNoteIntent(), ADD_NOTE, LEFT);
+        startActivityForResultWithAnimation(getAddNoteIntent(), ADD_NOTE, START);
     }
 
 
@@ -1500,12 +1500,9 @@ public class CardBrowser extends NavigationDrawerActivity implements
             mSearchItem.expandActionView();
         }
         if (mSearchTerms.contains("deck:")) {
-            searchText = "(" + mSearchTerms + ")";
+            searchText = mSearchTerms;
         } else {
-            if (!"".equals(mSearchTerms))
-                searchText = mRestrictOnDeck + "(" + mSearchTerms + ")";
-            else
-                searchText = mRestrictOnDeck;
+            searchText = mRestrictOnDeck + mSearchTerms;
         }
         if (colIsOpen() && mCardsAdapter!= null) {
             // clear the existing card list
@@ -2176,7 +2173,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
     private void closeCardBrowser(int result, Intent data) {
         // Set result and finish
         setResult(result, data);
-        finishWithAnimation(RIGHT);
+        finishWithAnimation(END);
     }
 
     /**
@@ -2891,11 +2888,5 @@ public class CardBrowser extends NavigationDrawerActivity implements
     void replaceSelectionWith(int[] positions) {
         mCheckedCards.clear();
         checkCardsAtPositions(positions);
-    }
-
-    @VisibleForTesting
-    void searchCards(String searchQuery) {
-        mSearchTerms = searchQuery;
-        searchCards();
     }
 }
