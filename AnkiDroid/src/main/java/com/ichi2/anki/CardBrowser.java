@@ -146,12 +146,14 @@ public class CardBrowser extends NavigationDrawerActivity implements
     private String mSearchTerms;
     private String mRestrictOnDeck;
     private int mCurrentFlag;
-
+    private static final String NIGHT_MODE_PREFERENCE = "invertedColors";
+    private boolean isDarkModeAtStart;
     private MenuItem mSearchItem;
     private MenuItem mSaveSearchItem;
     private MenuItem mMySearchesItem;
     private MenuItem mPreviewItem;
-
+ private int mOrder1;
+	 private int mOrder2;
     private Snackbar mUndoSnackbar;
 
     public static Card sCardBrowserCard;
@@ -171,7 +173,8 @@ public class CardBrowser extends NavigationDrawerActivity implements
     private static final int EDIT_CARD = 0;
     private static final int ADD_NOTE = 1;
     private static final int PREVIEW_CARDS = 2;
-
+    int a;
+private static final int PREVIEW_CARDS1 = 2;
     private static final int DEFAULT_FONT_SIZE_RATIO = 100;
     // Should match order of R.array.card_browser_order_labels
     public static final int CARD_ORDER_NONE = 0;
@@ -507,6 +510,11 @@ public class CardBrowser extends NavigationDrawerActivity implements
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // Saves the present Night Mode Preference on activity start.
+        isDarkModeAtStart=AnkiDroidApp.getSharedPrefs(getApplicationContext())
+                .getBoolean(NIGHT_MODE_PREFERENCE,false);
+
         if (showedActivityFailedScreen(savedInstanceState)) {
             return;
         }
@@ -820,7 +828,14 @@ public class CardBrowser extends NavigationDrawerActivity implements
     @Override
     protected void onDestroy() {
         Timber.d("onDestroy()");
-        invalidate();
+        if(isDarkModeAtStart == AnkiDroidApp.getSharedPrefs(getApplicationContext())
+                        .getBoolean(NIGHT_MODE_PREFERENCE,false)) {
+
+            // We don't want to invalidate on just theme change.
+            // as it cancels all the running tasks and the card browser is left empty.
+
+            invalidate();
+        }
         super.onDestroy();
         if (mUnmountReceiver != null) {
             unregisterReceiver(mUnmountReceiver);
@@ -1335,7 +1350,6 @@ public class CardBrowser extends NavigationDrawerActivity implements
         if (did != null && did > 0) {
             intent.putExtra(NoteEditor.EXTRA_DID, (long) did);
         }
-        intent.putExtra(NoteEditor.EXTRA_TEXT_FROM_SEARCH_VIEW, mSearchTerms);
         return intent;
     }
 
@@ -1500,12 +1514,9 @@ public class CardBrowser extends NavigationDrawerActivity implements
             mSearchItem.expandActionView();
         }
         if (mSearchTerms.contains("deck:")) {
-            searchText = "(" + mSearchTerms + ")";
+            searchText = mSearchTerms;
         } else {
-            if (!"".equals(mSearchTerms))
-                searchText = mRestrictOnDeck + "(" + mSearchTerms + ")";
-            else
-                searchText = mRestrictOnDeck;
+            searchText = mRestrictOnDeck + mSearchTerms;
         }
         if (colIsOpen() && mCardsAdapter!= null) {
             // clear the existing card list
@@ -2891,11 +2902,5 @@ public class CardBrowser extends NavigationDrawerActivity implements
     void replaceSelectionWith(int[] positions) {
         mCheckedCards.clear();
         checkCardsAtPositions(positions);
-    }
-
-    @VisibleForTesting
-    void searchCards(String searchQuery) {
-        mSearchTerms = searchQuery;
-        searchCards();
     }
 }
