@@ -668,26 +668,29 @@ public class CardBrowser extends NavigationDrawerActivity implements
         mCardsListView.setOnItemLongClickListener((adapterView, view, position, id) -> {
             if (mInMultiSelectMode) {
                 for (int i = Math.min(mLastSelectedPosition, position); i <= Math.max(mLastSelectedPosition, position); i++) {
-                    // getting the view of particular view and then checking whether it's already checked or not
-                    View childView = mCardsListView.getChildAt(i);
-                    CheckBox cb = childView.findViewById(R.id.card_checkbox);
-                    if (!cb.isChecked()) {
-                        cb.toggle();
-                        onCheck(i, childView);
+                    // Fetch card at position i.
+                    CardCache card = (CardCache) mCardsListView.getItemAtPosition(i);
+
+                    // If card is not in the list of checked cards, then add it, otherwise remove it.
+                    if (!mCheckedCards.contains(card)) {
+                        mCheckedCards.add(card);
+                    } else {
+                        mCheckedCards.remove(card);
                     }
+                    onSelectionChanged();
                 }
             } else {
                 mLastSelectedPosition = position;
                 saveScrollingState(position);
                 loadMultiSelectMode();
-
-                // click on whole cell triggers select
-                CheckBox cb = view.findViewById(R.id.card_checkbox);
-                cb.toggle();
-                onCheck(position, view);
-                recenterListView(view);
-                mCardsAdapter.notifyDataSetChanged();
             }
+
+            // click on whole cell triggers select
+            CheckBox cb = view.findViewById(R.id.card_checkbox);
+            cb.toggle();
+            onCheck(position, view);
+            recenterListView(view);
+            mCardsAdapter.notifyDataSetChanged();
             return true;
         });
 
@@ -1966,7 +1969,7 @@ public class CardBrowser extends NavigationDrawerActivity implements
         private void handleSearchResult() {
             Timber.i("CardBrowser:: Completed doInBackgroundSearchCards Successfully");
             updateList();
-            
+
             if ((mSearchView == null) || mSearchView.isIconified()) {
                 return;
             }
