@@ -72,6 +72,10 @@
         android:title="@string/card_editor_reschedule_card"/>
 
     <item
+        android:id="@+id/action_export_cards"
+        android:title="@string/card_editor_export_card"/>
+
+    <item
         android:id="@+id/action_reset_cards_progress"
         android:title="@string/card_editor_reset_card"/>
 
@@ -96,7 +100,6 @@
         ankidroid:showAsAction="ifRoom"
         android:id="@+id/action_undo"
         android:title="@string/undo"
-        ankidroid:actionProviderClass="com.ichi2.ui.RtlCompliantActionProvider"
         android:icon="@drawable/ic_undo_white_24dp"/>
 
 </menu>
